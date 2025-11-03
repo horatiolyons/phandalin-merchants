@@ -79,12 +79,16 @@
     #btcWrap[hidden]{ display:none !important; }
     .muted{ opacity:.7; }
 
-    /* Icon-only buttons for lock/unlock */
+    /* Icon lock button */
     .icon-btn{
       background:none; border:none; padding:.1rem .25rem; margin-left:.25rem;
-      cursor:pointer; font-size:1.05rem; line-height:1; color:#f3e4c9;
+      cursor:pointer; color:var(--quiet);
     }
-    .icon-btn:hover{ opacity:.9; }
+    .icon-btn .ico{ width:1.1rem; height:1.1rem; vertical-align:-2px; }
+    .icon-btn.is-unlocked{ color:var(--crest); }
+    @media (prefers-reduced-motion:no-preference){
+      .icon-btn:is(:hover,:focus-visible) .ico{ transform:translateY(-1px); transition:transform .12s ease; }
+    }
     .icon-btn:focus{ outline:2px solid #e7d6b6; outline-offset:2px; border-radius:3px; }
 
     /* Screen-reader-only text */
@@ -113,12 +117,25 @@
         <label class="muted">
           <input type="checkbox" id="btcToggle" /> Show below counter
         </label>
-        <!-- Icon buttons replace text -->
-        <button id="btcUnlock" type="button" class="icon-btn" title="Unlock below-counter items" aria-label="Unlock below-counter items">🔒</button>
-        <button id="btcLock"   type="button" class="icon-btn" title="Lock below-counter items"   aria-label="Lock below-counter items">🔓</button>
+        <!-- Single icon button toggles locked/unlocked -->
+        <button id="btcLockBtn" type="button" class="icon-btn" title="Unlock below-counter items" aria-label="Unlock below-counter items">
+          <svg class="ico" aria-hidden="true"><use href="#ico-lock-closed"/></svg>
+        </button>
       </span>
     </div>
   </nav>
+
+  <!-- Inline SVG symbol defs (monochrome, crest-tinted when unlocked) -->
+  <svg width="0" height="0" style="position:absolute"><defs>
+    <symbol id="ico-lock-closed" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.75"
+        d="M7 10h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zm2 0V8a3 3 0 1 1 6 0v2"/>
+    </symbol>
+    <symbol id="ico-lock-open" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.75"
+        d="M7 10h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zm8-2V6a3 3 0 1 0-6 0"/>
+    </symbol>
+  </defs></svg>
 
   <main id="main">
     <div class="wrap">
@@ -235,8 +252,7 @@
       merchant:$("#merchant"),
       btc:$("#btcToggle"),
       btcWrap:$("#btcWrap"),
-      btcUnlock:$("#btcUnlock"),
-      btcLock:$("#btcLock"),
+      lockBtn:$("#btcLockBtn"),
       paper:$("#paper"),
       paperInner:$("#paperInner")
     };
@@ -277,47 +293,61 @@
         updateHash(); render();
       });
 
-      els.btcUnlock.addEventListener("click", ()=>{
-        const slug=currentMerchant(), name=merchantSlugToName(slug);
-        const guess=(prompt(`Whisper the word for ${name}:`)||"").trim().toLowerCase();
-        const target=(PASSPHRASE[slug]||"").toLowerCase();
-        if(guess && guess===target){
-          const pass=getPassState(); pass[slug]=true; setPassState(pass);
-          const wantsBtc = new URLSearchParams(location.hash.slice(1)).get("btc")==="1";
-          els.btc.disabled=false;
-          els.btc.checked = wantsBtc || els.btc.checked;
-          const shown=getShownState(); shown[slug]=els.btc.checked; setShownState(shown);
+      els.lockBtn.addEventListener("click", ()=>{
+        const slug=currentMerchant();
+        if(merchantUnlocked(slug)){
+          // Lock
+          const pass=getPassState(); delete pass[slug]; setPassState(pass);
+          const shown=getShownState(); shown[slug]=false; setShownState(shown);
+          els.btc.checked=false;
           applyBtcVisibility(); updateHash(); render();
         }else{
-          alert('They shake their head. "Not today."');
+          // Unlock (prompt)
+          const name=merchantSlugToName(slug);
+          const guess=(prompt(`Whisper the word for ${name}:`)||"").trim().toLowerCase();
+          const target=(PASSPHRASE[slug]||"").toLowerCase();
+          if(guess && guess===target){
+            const pass=getPassState(); pass[slug]=true; setPassState(pass);
+            const wantsBtc = new URLSearchParams(location.hash.slice(1)).get("btc")==="1";
+            els.btc.disabled=false;
+            els.btc.checked = wantsBtc || els.btc.checked;
+            const shown=getShownState(); shown[slug]=els.btc.checked; setShownState(shown);
+            applyBtcVisibility(); updateHash(); render();
+          }else{
+            alert('They shake their head. "Not today."');
+          }
         }
-      });
-
-      els.btcLock.addEventListener("click", ()=>{
-        const slug=currentMerchant();
-        const pass=getPassState(); delete pass[slug]; setPassState(pass);
-        const shown=getShownState(); shown[slug]=false; setShownState(shown);
-        els.btc.checked=false; applyBtcVisibility(); updateHash(); render();
       });
 
       updateHash();
     }
 
+    function syncLockIcon(){
+      const slug=currentMerchant();
+      const open=merchantUnlocked(slug);
+      els.lockBtn.classList.toggle("is-unlocked", open);
+      els.lockBtn.title = open ? "Lock below-counter items" : "Unlock below-counter items";
+      els.lockBtn.setAttribute("aria-label", els.lockBtn.title);
+      const useEl = els.lockBtn.querySelector("use");
+      if(useEl){ useEl.setAttribute("href", open ? "#ico-lock-open" : "#ico-lock-closed"); }
+    }
+
     function applyBtcVisibility(){
       const slug=currentMerchant();
+
       if(!merchantHasBTC(slug)){
-        els.btcWrap.hidden=true; els.btc.checked=false; els.btc.disabled=true; updateHash(); return;
+        els.btcWrap.hidden=true; els.btc.checked=false; els.btc.disabled=true; updateHash();
+        return;
       }
       els.btcWrap.hidden=false;
 
       const unlocked=merchantUnlocked(slug);
       els.btc.disabled = !unlocked;
-      els.btcUnlock.style.display = unlocked ? "none" : "inline";
-      els.btcLock.style.display   = unlocked ? "inline" : "none";
 
       const shown=getShownState();
       els.btc.checked = unlocked ? !!shown[slug] : false;
 
+      syncLockIcon();
       updateHash();
     }
 
