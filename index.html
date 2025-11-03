@@ -103,14 +103,10 @@
     }
     .item + .item{ margin-top:.38rem; }
 
-    /* BELOW THE COUNTER IDENTIFIERS */
+    /* BTC ledger margin */
     .item.btc{
       border-left:2px solid var(--rule);
       padding-left:.55rem;
-    }
-    .item.btc .name span::before{
-      content:"\2020\u00A0"; /* dagger + nbsp */
-      color:var(--quiet);
     }
 
     .name{
@@ -149,7 +145,6 @@
     .footRight{text-align:right; flex:1}
 
     /* Accessibility helpers */
-    .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
     a.skip{position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;}
     a.skip:focus{position:static; width:auto; height:auto; background:#fff; color:#000; padding:.25rem .5rem;}
 
@@ -445,9 +440,9 @@
           const price = row.price_text ? nb(row.price_text) : fmtPriceCp(row.price_cp);
           const btcClass = row.is_btc ? " btc" : "";
           out += `
-            <li class="item${btcClass}" aria-label="${row.is_btc ? 'Below counter: ' : ''}${row.item}">
+            <li class="item${btcClass}" aria-label="${row.item}">
               <div class="line name">
-                <span>${row.is_btc ? '<span class="sr-only">Below counter: </span>' : ''}${row.item}</span>
+                <span>${row.item}</span>
                 <span class="dots" aria-hidden="true"></span>
               </div>
               <div class="price">${price}</div>
@@ -457,10 +452,9 @@
         out += `</ul></section>`;
       }
 
-      // Footer (legend appears only when BTC items are visible)
-      const legend = showBTC ? `\u2020 items are available below the counter.` : ``;
+      // Footer (optional – blank by default)
       out += `<div class="footer">
-                <div class="footLeft">${legend}</div>
+                <div class="footLeft"></div>
                 <div class="footRight"></div>
               </div>`;
 
