@@ -103,6 +103,16 @@
     }
     .item + .item{ margin-top:.38rem; }
 
+    /* BELOW THE COUNTER IDENTIFIERS */
+    .item.btc{
+      border-left:2px solid var(--rule);
+      padding-left:.55rem;
+    }
+    .item.btc .name span::before{
+      content:"\2020\u00A0"; /* dagger + nbsp */
+      color:var(--quiet);
+    }
+
     .name{
       min-width:0;
       overflow-wrap:anywhere;
@@ -130,16 +140,6 @@
       padding-left:.7rem;
     }
 
-    /* BTC styling: ledger margin + quiet tint */
-    .item.btc{
-      border-left:2px solid var(--rule);
-      padding-left:.55rem;
-    }
-    .item.btc .name,
-    .item.btc .desc{
-      color: var(--quiet);
-    }
-
     /* Footer (optional notes) */
     .footer{
       display:flex; gap:.8rem; margin-top:1rem; color:var(--quiet);
@@ -149,6 +149,7 @@
     .footRight{text-align:right; flex:1}
 
     /* Accessibility helpers */
+    .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
     a.skip{position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;}
     a.skip:focus{position:static; width:auto; height:auto; background:#fff; color:#000; padding:.25rem .5rem;}
 
@@ -443,11 +444,10 @@
         for (const row of items){
           const price = row.price_text ? nb(row.price_text) : fmtPriceCp(row.price_cp);
           const btcClass = row.is_btc ? " btc" : "";
-          const aria = row.is_btc ? ` aria-label="Below counter: ${row.item}"` : ` aria-label="${row.item}"`;
           out += `
-            <li class="item${btcClass}"${aria}>
+            <li class="item${btcClass}" aria-label="${row.is_btc ? 'Below counter: ' : ''}${row.item}">
               <div class="line name">
-                <span>${row.item}</span>
+                <span>${row.is_btc ? '<span class="sr-only">Below counter: </span>' : ''}${row.item}</span>
                 <span class="dots" aria-hidden="true"></span>
               </div>
               <div class="price">${price}</div>
@@ -457,8 +457,8 @@
         out += `</ul></section>`;
       }
 
-      // Footer legend appears only when BTC is visible
-      const legend = showBTC ? `Ledger-marked items are available <em>below the counter</em>.` : ``;
+      // Footer (legend appears only when BTC items are visible)
+      const legend = showBTC ? `\u2020 items are available below the counter.` : ``;
       out += `<div class="footer">
                 <div class="footLeft">${legend}</div>
                 <div class="footRight"></div>
