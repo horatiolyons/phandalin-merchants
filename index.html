@@ -227,13 +227,15 @@
     const $ = (sel, el=document) => el.querySelector(sel);
     const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 
+    // UPDATED: drop apostrophes entirely when slugging
     function slugify(s){
       return (s||"").toString()
         .normalize("NFKD")
-        .replace(/[\u2019\u2018\u201C\u201D]/g,"'") // smart quotes -> '
-        .replace(/&/g, 'and')
-        .replace(/[^a-z0-9]+/gi,'-')
-        .replace(/^-+|-+$/g,'')
+        .replace(/[\u2019\u2018]/g, "'") // normalize curly → straight
+        .replace(/'/g, "")               // DROP apostrophes
+        .replace(/&/g, "and")
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-+|-+$/g, "")
         .toLowerCase();
     }
 
@@ -400,7 +402,6 @@
           shown[slug] = els.btc.checked;
           setShownState(shown);
         }else{
-          // Shouldn't happen (disabled when locked), but ensure OFF
           els.btc.checked = false;
         }
         updateHash();
@@ -419,11 +420,11 @@
           pass[slug] = true;
           setPassState(pass);
 
-          // Enable checkbox; if deep link had btc=1, auto-check
+          // Enable checkbox; respect deep link if present
           const hash = new URLSearchParams(location.hash.slice(1));
           const wantsBtc = hash.get("btc") === "1";
           els.btc.disabled = false;
-          els.btc.checked = wantsBtc || els.btc.checked; // respect existing choice or deep link
+          els.btc.checked = wantsBtc || els.btc.checked;
           const shown = getShownState();
           shown[slug] = els.btc.checked;
           setShownState(shown);
