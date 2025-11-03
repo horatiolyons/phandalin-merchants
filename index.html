@@ -5,153 +5,64 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Phandalin Merchants</title>
   <style>
-    /* =========================
-       THEME TOKENS (can tweak)
-       ========================= */
     :root{
-      --ink:#2b211b;
-      --quiet:#6b5b53;
-      --accent:#7a5b3a;
-      --paper:#efe7d5;
-      --paper-edge:#d8c8a9;
-      --rule: rgba(0,0,0,.08);
-      --crest:#8a5a2b;
-      --w:900px;
+      --ink:#2b211b; --quiet:#6b5b53; --accent:#7a5b3a;
+      --paper:#efe7d5; --paper-edge:#d8c8a9; --rule: rgba(0,0,0,.08);
+      --crest:#8a5a2b; --w:900px;
     }
+    .skin-parchment{ --paper:#efe7d5; --paper-edge:#d8c8a9; --accent:#7a5b3a; }
+    .skin-noticeboard{ --paper:#fbf7ed; --paper-edge:#e8dcc1; --accent:#744210; }
 
-    /* Skins */
-    .skin-parchment{
-      --paper:#efe7d5; --paper-edge:#d8c8a9; --accent:#7a5b3a;
-    }
-    .skin-noticeboard{
-      --paper:#fbf7ed; --paper-edge:#e8dcc1; --accent:#744210;
-    }
-
-    /* Base */
     html,body{margin:0;padding:0;background:#e8e0cf;color:var(--ink);}
-    body{
-      font-family:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif;
-      line-height:1.35;
-    }
+    body{font-family:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif; line-height:1.35;}
     .wrap{max-width:var(--w); margin:0 auto; padding:0 12px;}
 
-    /* Controls (nav) */
-    nav.controls{
-      position:sticky; top:0; z-index:10;
-      background:rgba(30,22,18,.9);
-      color:#f6f0e6;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      backdrop-filter: blur(2px);
-    }
-    .controls .inner{
-      display:flex; align-items:center; gap:.8rem;
-      padding:.5rem .8rem;
-    }
+    nav.controls{ position:sticky; top:0; z-index:10; background:rgba(30,22,18,.9); color:#f6f0e6;
+      border-bottom:1px solid rgba(255,255,255,.08); backdrop-filter: blur(2px);}
+    .controls .inner{ display:flex; align-items:center; gap:.8rem; padding:.5rem .8rem;}
     .controls label{font-size:.95rem;}
-    .controls select, .controls input[type="checkbox"]{
-      accent-color:#c5a77b;
-    }
-    .controls select{
-      background:#f6f0e6; color:#221a16; border:1px solid #b8a58b; border-radius:4px; padding:.25rem .5rem;
-    }
+    .controls select,.controls input[type="checkbox"]{ accent-color:#c5a77b; }
+    .controls select{ background:#f6f0e6; color:#221a16; border:1px solid #b8a58b; border-radius:4px; padding:.25rem .5rem;}
+    .controls .link{ color:#f6f0e6; opacity:.85; text-decoration:underline; cursor:pointer; }
+    .controls .link:hover{ opacity:1; }
     .spacer{flex:1}
 
-    /* Paper sheet */
     main{padding:1.1rem 0 2rem;}
-    .paper{
-      background:var(--paper);
-      margin:0 auto;
-      border-radius:6px;
-      box-shadow: 0 12px 28px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08);
-      position:relative;
-      overflow:hidden;
-    }
-    .paper::before{
-      /* top edge glow */
-      content:""; position:absolute; inset:0;
-      background:
-        radial-gradient(120% 40% at 50% -10%, var(--paper-edge), transparent 60%),
-        radial-gradient(100% 120% at 50% 120%, rgba(0,0,0,.06), transparent 60%);
-      mix-blend-mode:multiply; pointer-events:none;
-    }
+    .paper{ background:var(--paper); margin:0 auto; border-radius:6px;
+      box-shadow:0 12px 28px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.08); position:relative; overflow:hidden;}
+    .paper::before{ content:""; position:absolute; inset:0;
+      background: radial-gradient(120% 40% at 50% -10%, var(--paper-edge), transparent 60%),
+                  radial-gradient(100% 120% at 50% 120%, rgba(0,0,0,.06), transparent 60%);
+      mix-blend-mode:multiply; pointer-events:none;}
     .paper .pad{padding:1.4rem 1.2rem;}
 
-    /* Titles */
-    h2{
-      margin:.2rem 0 .5rem 0;
-      font-size:1.8rem; color:var(--accent);
-    }
-    h3{
-      margin:.45rem 0 .3rem;
-      padding-top:.45rem;
-      border-top:1px solid var(--rule);
-      font-variant: small-caps;
-      letter-spacing:.08em;
-      font-size:1.05rem;
-      color:var(--accent);
-    }
+    h2{ margin:.2rem 0 .5rem 0; font-size:1.8rem; color:var(--accent); }
+    h3{ margin:.45rem 0 .3rem; padding-top:.45rem; border-top:1px solid var(--rule);
+      font-variant:small-caps; letter-spacing:.08em; font-size:1.05rem; color:var(--accent); }
 
-    /* Sections & items */
     .section{break-inside:avoid; page-break-inside:avoid;}
-    .items{display:block; margin:0; padding:0; list-style:none;}
-    .item{
-      display:grid;
-      grid-template-columns: minmax(0,1fr) auto;
-      grid-column-gap:.35rem;
-      align-items:end;
-      margin:0; padding:0;
-    }
+    .items{list-style:none; margin:0; padding:0;}
+    .item{ display:grid; grid-template-columns:minmax(0,1fr) auto; grid-column-gap:.35rem; align-items:end; margin:0; padding:0;}
     .item + .item{ margin-top:.38rem; }
+    .item.btc{ border-left:2px solid var(--rule); padding-left:.55rem; }
 
-    /* BTC ledger margin */
-    .item.btc{
-      border-left:2px solid var(--rule);
-      padding-left:.55rem;
-    }
-
-    .name{
-      min-width:0;
-      overflow-wrap:anywhere;
-    }
-
-    .line{
-      display:flex; align-items:flex-end; gap:.35rem;
-    }
-    .dots{
-      flex:1 1 auto; height:1px; transform:translateY(-2px);
+    .name{ min-width:0; overflow-wrap:anywhere; }
+    .line{ display:flex; align-items:flex-end; gap:.35rem;}
+    .dots{ flex:1 1 auto; height:1px; transform:translateY(-2px);
       background-image: radial-gradient(circle, currentColor .7px, transparent .7px);
-      background-size: 6px 1px; background-repeat: repeat-x;
-      opacity:.55;
-    }
-    .price{
-      white-space:nowrap;
-      font-variant-numeric: tabular-nums;
-      justify-self:end;
-    }
+      background-size:6px 1px; background-repeat:repeat-x; opacity:.55;}
+    .price{ white-space:nowrap; font-variant-numeric:tabular-nums; justify-self:end;}
+    .desc{ grid-column:1 / -1; font-size:.95rem; color:var(--quiet); margin:.08rem 0 0 0; padding-left:.7rem;}
 
-    .desc{
-      grid-column:1 / -1;
-      font-size:.95rem; color:var(--quiet);
-      margin:.08rem 0 0 0;
-      padding-left:.7rem;
-    }
+    .footer{ display:flex; gap:.8rem; margin-top:1rem; color:var(--quiet); border-top:1px solid var(--rule); padding-top:.6rem;}
+    .footLeft{flex:1} .footRight{text-align:right; flex:1}
 
-    /* Footer (optional notes) */
-    .footer{
-      display:flex; gap:.8rem; margin-top:1rem; color:var(--quiet);
-      border-top:1px solid var(--rule); padding-top:.6rem;
-    }
-    .footLeft{flex:1}
-    .footRight{text-align:right; flex:1}
-
-    /* Accessibility helpers */
     a.skip{position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;}
     a.skip:focus{position:static; width:auto; height:auto; background:#fff; color:#000; padding:.25rem .5rem;}
 
-    /* Ensure hidden attribute fully hides in all browsers */
     #btcWrap[hidden]{ display:none !important; }
+    #lockWrap[hidden]{ display:none !important; }
 
-    /* Print */
     @media print{
       nav.controls{display:none !important;}
       body{background:var(--paper);}
@@ -165,12 +76,16 @@
   <nav class="controls" aria-label="Menu controls">
     <div class="wrap inner">
       <label for="merchant">Merchant</label>
-      <select id="merchant" name="merchant" aria-label="Select merchant">
-        <!-- populated by JS in fixed order, falling back to dataset -->
-      </select>
+      <select id="merchant" name="merchant" aria-label="Select merchant"></select>
       <div class="spacer"></div>
+
       <span id="btcWrap">
-        <label><input type="checkbox" id="btcToggle" /> Show below counter</label>
+        <label><input type="checkbox" id="btcToggle" disabled /> Show below counter</label>
+      </span>
+
+      <span id="lockWrap" aria-live="polite">
+        <span id="lockedUI"><span class="link" id="unlockBtn" role="button" tabindex="0">Unlock</span></span>
+        <span id="unlockedUI" hidden><span class="link" id="lockBtn" role="button" tabindex="0">Lock</span></span>
       </span>
     </div>
   </nav>
@@ -178,9 +93,7 @@
   <main id="main">
     <div class="wrap">
       <article id="paper" class="paper skin-parchment" aria-live="polite">
-        <div class="pad" id="paperInner">
-          <!-- content injected -->
-        </div>
+        <div class="pad" id="paperInner"></div>
       </article>
     </div>
   </main>
@@ -191,19 +104,20 @@
     // =========================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJ-jHhfMgMuQryuOFEzBmhgjvaQYeLJ2hwoaVMayEMqFVRfk5CsxZ-wA7-rdpRQ4Bl1CdUC2p0pKrR/pub?output=csv";
 
-    // Fixed display order; any extra merchants found in data append after (alphabetically)
-    const FIXED_ORDER = [
-      "Stonehill Inn",
-      "Barthen’s Provisions",
-      "Hilda’s Remedies",
-      "Miner’s Exchange"
-    ];
-
+    const FIXED_ORDER = ["Stonehill Inn","Barthen’s Provisions","Hilda’s Remedies","Miner’s Exchange"];
     const MERCHANT_SKIN = {
-      "stonehill-inn": "skin-parchment",
-      "barthens-provisions": "skin-parchment",
-      "hildas-remedies": "skin-parchment",
-      "miners-exchange": "skin-noticeboard"
+      "stonehill-inn":"skin-parchment",
+      "barthens-provisions":"skin-parchment",
+      "hildas-remedies":"skin-parchment",
+      "miners-exchange":"skin-noticeboard"
+    };
+
+    // Cosmetic passphrases — edit these to taste
+    const PASS_PHRASES = {
+      "stonehill-inn": "tankard",
+      "barthens-provisions": "twine",
+      "hildas-remedies": "tincture",
+      "miners-exchange": "assay"
     };
 
     // =========================
@@ -215,34 +129,28 @@
     function slugify(s){
       return (s||"").toString()
         .normalize("NFKD")
-        .replace(/[\u2019\u2018\u201C\u201D]/g,"'") // smart quotes -> '
-        .replace(/&/g, 'and')
+        .replace(/[\u2019\u2018\u201C\u201D]/g,"'")
+        .replace(/&/g,'and')
         .replace(/[^a-z0-9]+/gi,'-')
         .replace(/^-+|-+$/g,'')
         .toLowerCase();
     }
 
-    // Lightweight CSV parser (handles quotes/commas/newlines)
     function parseCSV(text){
-      const rows = [];
-      let i=0, field="", row=[], inQuotes=false;
-      const pushField = ()=>{ row.push(field); field=""; };
-      const pushRow = ()=>{ rows.push(row); row=[]; };
+      const rows=[]; let i=0, field="", row=[], inQuotes=false;
+      const pushField=()=>{row.push(field); field="";};
+      const pushRow=()=>{rows.push(row); row=[];};
       while(i<text.length){
-        const c = text[i];
+        const c=text[i];
         if(inQuotes){
-          if(c === '"'){
-            if(text[i+1] === '"'){ field+='"'; i++; } // escaped quote
-            else { inQuotes=false; }
-          } else {
-            field+=c;
-          }
-        } else {
-          if(c === '"'){ inQuotes=true; }
-          else if(c === ','){ pushField(); }
-          else if(c === '\r'){ /* ignore */ }
+          if(c === '"'){ if(text[i+1] === '"'){field+='"'; i++;} else inQuotes=false; }
+          else field+=c;
+        }else{
+          if(c === '"') inQuotes=true;
+          else if(c === ',') pushField();
+          else if(c === '\r'){}
           else if(c === '\n'){ pushField(); pushRow(); }
-          else { field+=c; }
+          else field+=c;
         }
         i++;
       }
@@ -250,91 +158,98 @@
       return rows;
     }
 
-    function toBool(v){ return (v||"").toString().trim().toUpperCase()==="TRUE"; }
-
+    const toBool = v => (v||"").toString().trim().toUpperCase()==="TRUE";
     function fmtPriceCp(cp){
       if(cp==null || cp==="") return "—";
-      const n = Number(cp);
-      if(!Number.isFinite(n)) return "—";
-      if(n % 100 === 0) return (n/100) + "\u00A0gp";
-      if(n % 10 === 0)  return (n/10)  + "\u00A0sp";
-      return n + "\u00A0cp";
+      const n=Number(cp); if(!Number.isFinite(n)) return "—";
+      if(n%100===0) return (n/100)+"\u00A0gp";
+      if(n%10===0)  return (n/10)+"\u00A0sp";
+      return n+"\u00A0cp";
+    }
+    const nb = s => (s||"").toString().replace(/\s/g,"\u00A0");
+
+    // =========================
+    // DATA & STATE
+    // =========================
+    let RAW=[], MERCHANTS=[], HAS_BTC={};
+
+    const els = {
+      merchant: $("#merchant"),
+      btc: $("#btcToggle"),
+      btcWrap: $("#btcWrap"),
+      lockWrap: $("#lockWrap"),
+      lockedUI: $("#lockedUI"),
+      unlockedUI: $("#unlockedUI"),
+      unlockBtn: $("#unlockBtn"),
+      lockBtn: $("#lockBtn"),
+      paper: $("#paper"),
+      paperInner: $("#paperInner")
+    };
+
+    function getVisibleMap(){
+      try{ return JSON.parse(localStorage.getItem("btcUnlocked") || "{}"); }
+      catch{ return {}; }
+    }
+    function setVisibleMap(obj){ localStorage.setItem("btcUnlocked", JSON.stringify(obj||{})); }
+
+    function getPassMap(){
+      try{ return JSON.parse(localStorage.getItem("btcPass") || "{}"); }
+      catch{ return {}; }
+    }
+    function setPassMap(obj){ localStorage.setItem("btcPass", JSON.stringify(obj||{})); }
+
+    function isUnlocked(slug){
+      // If no passphrase defined for this merchant, treat as unlocked (quality of life for future merchants)
+      if(!(slug in PASS_PHRASES)) return true;
+      const pass = getPassMap();
+      return !!pass[slug];
+    }
+    function setUnlocked(slug, val){
+      const pass = getPassMap();
+      if(val) pass[slug]=true; else delete pass[slug];
+      setPassMap(pass);
     }
 
-    function nb(s){ return (s||"").toString().replace(/\s/g, "\u00A0"); }
+    const currentMerchant = () => els.merchant.value;
+    function merchantSlugToName(slug){ return MERCHANTS.find(m => slugify(m)===slug) || slug; }
+    const merchantHasBTC = slug => !!HAS_BTC[slug];
 
     // =========================
-    // DATA FETCH & PREP
+    // LOAD
     // =========================
-    let RAW = [];         // all rows
-    let MERCHANTS = [];   // discovered merchant names
-    let HAS_BTC = {};     // slug -> boolean
-
     async function loadData(){
       const res = await fetch(CSV_URL, {cache:"no-store"});
       if(!res.ok) throw new Error("Failed to fetch CSV");
       const txt = await res.text();
       const rows = parseCSV(txt);
 
-      // Expect headers: sort, merchant, section, item, description, price_cp, price_text, is_btc
       const [hdr, ...body] = rows;
-      const idx = {};
-      hdr.forEach((h,i)=> idx[h.trim().toLowerCase()] = i);
+      const idx = {}; hdr.forEach((h,i)=> idx[h.trim().toLowerCase()] = i);
 
       RAW = body
-        .filter(r => r.length && r.some(cell => cell && cell.trim()!=="")) // skip empties
-        .map((r, i) => ({
-          __i: i, // original CSV order for stable tie-breaks
-          sort: Number(r[idx["sort"]] ?? ""),
-          merchant: (r[idx["merchant"]] ?? "").trim(),
-          section: (r[idx["section"]] ?? "").trim(),
-          item: (r[idx["item"]] ?? "").trim(),
-          description: (r[idx["description"]] ?? "").trim(),
-          price_cp: (r[idx["price_cp"]] ?? "").trim(),
-          price_text: (r[idx["price_text"]] ?? "").trim(),
+        .filter(r => r.length && r.some(cell => cell && cell.trim()!==""))
+        .map((r,i)=>({
+          __i:i,
+          sort:Number(r[idx["sort"]] ?? ""),
+          merchant:(r[idx["merchant"]] ?? "").trim(),
+          section:(r[idx["section"]] ?? "").trim(),
+          item:(r[idx["item"]] ?? "").trim(),
+          description:(r[idx["description"]] ?? "").trim(),
+          price_cp:(r[idx["price_cp"]] ?? "").trim(),
+          price_text:(r[idx["price_text"]] ?? "").trim(),
           is_btc: toBool(r[idx["is_btc"]])
         }));
 
-      const set = new Set(RAW.map(r => r.merchant).filter(Boolean));
+      const set = new Set(RAW.map(r=>r.merchant).filter(Boolean));
       MERCHANTS = Array.from(set);
 
-      // Build merchant -> hasBTC map
+      // Build has-BTC map
       HAS_BTC = {};
-      for(const r of RAW){
-        if(r.is_btc && r.merchant){
-          HAS_BTC[slugify(r.merchant)] = true;
-        }
-      }
+      for(const r of RAW){ if(r.is_btc && r.merchant){ HAS_BTC[slugify(r.merchant)] = true; } }
 
       initUI();
       render();
     }
-
-    // =========================
-    // STATE
-    // =========================
-    const els = {
-      merchant: $("#merchant"),
-      btc: $("#btcToggle"),
-      btcWrap: $("#btcWrap"),
-      paper: $("#paper"),
-      paperInner: $("#paperInner")
-    };
-
-    function getBtcState(){
-      try{ return JSON.parse(localStorage.getItem("btcUnlocked") || "{}"); }
-      catch{ return {}; }
-    }
-    function setBtcState(obj){
-      localStorage.setItem("btcUnlocked", JSON.stringify(obj||{}));
-    }
-
-    function currentMerchant(){ return els.merchant.value; }
-    function merchantSlugToName(slug){
-      const match = MERCHANTS.find(m => slugify(m)===slug);
-      return match || slug;
-    }
-    function merchantHasBTC(slug){ return !!HAS_BTC[slug]; }
 
     // =========================
     // UI INIT
@@ -349,50 +264,91 @@
         return `<option value="${val}">${name}</option>`;
       }).join("");
 
-      const hashParams = new URLSearchParams(location.hash.slice(1));
-      const desired = hashParams.get("merchant");
-      const defaultSlug = slugify(order[0] || "");
+      const hash = new URLSearchParams(location.hash.slice(1));
+      const desired = hash.get("merchant");
+      const defaultSlug = slugify(order[0]||"");
       els.merchant.value = desired && order.some(n=>slugify(n)===desired) ? desired : defaultSlug;
 
-      // Apply BTC toggle visibility/state based on current merchant
-      applyBtcVisibility();
-
       els.merchant.addEventListener("change", ()=>{
-        applyBtcVisibility();
+        applyBtcControls();
         render();
       });
-
       els.btc.addEventListener("change", ()=>{
         const slug = currentMerchant();
-        const has = merchantHasBTC(slug);
-        if(has){
-          const btc = getBtcState();
-          btc[slug] = els.btc.checked;
-          setBtcState(btc);
+        if(merchantHasBTC(slug) && isUnlocked(slug)){
+          const map = getVisibleMap();
+          map[slug] = els.btc.checked;
+          setVisibleMap(map);
         }else{
-          // If somehow toggled when not available, force off
           els.btc.checked = false;
         }
         updateHash();
         render();
       });
 
+      els.unlockBtn.addEventListener("click", onUnlock);
+      els.unlockBtn.addEventListener("keydown", (e)=>{ if(e.key==='Enter' || e.key===' ') onUnlock(); });
+      els.lockBtn.addEventListener("click", onLock);
+      els.lockBtn.addEventListener("keydown", (e)=>{ if(e.key==='Enter' || e.key===' ') onLock(); });
+
+      applyBtcControls();
       updateHash();
     }
 
-    function applyBtcVisibility(){
+    function onUnlock(){
+      const slug = currentMerchant();
+      if(!merchantHasBTC(slug)) return;
+      const want = prompt(`Whisper the word for ${merchantSlugToName(slug)}:`); // cosmetic
+      if(want==null) return; // cancel
+      const expected = (PASS_PHRASES[slug]||"").toString().trim().toLowerCase();
+      const guess = (want||"").toString().trim().toLowerCase();
+      if(expected && guess === expected){
+        setUnlocked(slug,true);
+        // convenience: auto-show BTC on successful unlock
+        const vis = getVisibleMap(); vis[slug] = true; setVisibleMap(vis);
+        applyBtcControls();
+        updateHash();
+        render();
+      }else{
+        alert("They shake their head. Not today.");
+      }
+    }
+
+    function onLock(){
+      const slug = currentMerchant();
+      setUnlocked(slug,false);
+      const vis = getVisibleMap(); delete vis[slug]; setVisibleMap(vis);
+      applyBtcControls();
+      updateHash();
+      render();
+    }
+
+    function applyBtcControls(){
       const slug = currentMerchant();
       const has = merchantHasBTC(slug);
+      const unlocked = isUnlocked(slug);
 
       if(!has){
-        // Hide and force OFF
-        els.btc.checked = false;
         els.btcWrap.hidden = true;
+        els.lockWrap.hidden = true;
+        els.btc.checked = false;
+        els.btc.disabled = true;
       }else{
         els.btcWrap.hidden = false;
-        // Restore per-merchant state
-        const btcAll = getBtcState();
-        els.btc.checked = !!btcAll[slug];
+        els.lockWrap.hidden = false;
+
+        if(unlocked){
+          els.lockedUI.hidden = true;
+          els.unlockedUI.hidden = false;
+          els.btc.disabled = false;
+          const vis = getVisibleMap();
+          els.btc.checked = !!vis[slug];
+        }else{
+          els.lockedUI.hidden = false;
+          els.unlockedUI.hidden = true;
+          els.btc.checked = false;
+          els.btc.disabled = true;
+        }
       }
       updateHash();
     }
@@ -401,7 +357,7 @@
       const params = new URLSearchParams();
       const slug = currentMerchant();
       params.set("merchant", slug);
-      if(els.btc.checked && merchantHasBTC(slug)) params.set("btc","1");
+      if(merchantHasBTC(slug) && isUnlocked(slug) && els.btc.checked) params.set("btc","1");
       location.hash = params.toString();
     }
 
@@ -411,70 +367,56 @@
     function render(){
       const merchSlug = currentMerchant();
       const merchName = merchantSlugToName(merchSlug);
-      const showBTC = els.btc.checked && merchantHasBTC(merchSlug);
+      const showBTC = merchantHasBTC(merchSlug) && isUnlocked(merchSlug) && els.btc.checked;
 
-      // Skin
       const skinClass = MERCHANT_SKIN[merchSlug] || "skin-parchment";
       els.paper.className = `paper ${skinClass}`;
 
-      // Filter rows for this merchant, respecting BTC
       const rows = RAW.filter(r => slugify(r.merchant)===merchSlug && (showBTC || !r.is_btc));
 
-      // Group rows by section, tracking earliest CSV appearance for tie-breaks
+      // Group by section, track earliest CSV index
       const sectionMap = new Map();
-      for (const r of rows) {
+      for(const r of rows){
         const name = r.section || "";
         let s = sectionMap.get(name);
-        if (!s) {
-          s = { name, items: [], firstIndex: r.__i };
-          sectionMap.set(name, s);
-        }
+        if(!s){ s = { name, items:[], firstIndex:r.__i }; sectionMap.set(name, s); }
         s.items.push(r);
-        if (r.__i < s.firstIndex) s.firstIndex = r.__i;
+        if(r.__i < s.firstIndex) s.firstIndex = r.__i;
       }
 
-      // Sort items within each section; compute a section sort key
+      // Sort items, compute section key
       const sections = [];
-      for (const s of sectionMap.values()) {
-        s.items.sort((a, b) => {
+      for(const s of sectionMap.values()){
+        s.items.sort((a,b)=>{
           const sa = Number.isFinite(a.sort) ? a.sort : Infinity;
           const sb = Number.isFinite(b.sort) ? b.sort : Infinity;
-          if (sa !== sb) return sa - sb;
+          if(sa !== sb) return sa - sb;
           return a.item.localeCompare(b.item);
         });
-
-        if (!s.items.length) continue;
-
-        // Section key: the first (lowest) item's numeric sort if available; else Infinity
+        if(!s.items.length) continue;
         const firstWithSort = s.items.find(x => Number.isFinite(x.sort));
         s.key = Number.isFinite(firstWithSort?.sort) ? firstWithSort.sort : Infinity;
-
         sections.push(s);
       }
 
-      // Order sections by key, then earliest CSV position, then name
-      sections.sort((a, b) => {
-        if (a.key !== b.key) return a.key - b.key;
-        if (a.name && !b.name) return -1;
-        if (!a.name && b.name) return 1;
+      // Order sections
+      sections.sort((a,b)=>{
+        if(a.key !== b.key) return a.key - b.key;
+        if(a.name && !b.name) return -1;
+        if(!a.name && b.name) return 1;
         const idx = a.firstIndex - b.firstIndex;
-        if (idx) return idx;
+        if(idx) return idx;
         return a.name.localeCompare(b.name);
       });
 
       // Build HTML
-      let out = "";
-      out += `<h2>${merchName}</h2>`;
-
-      for (const sec of sections) {
-        const items = sec.items;
-        if (!items || !items.length) continue; // hide empty
-
+      let out = `<h2>${merchName}</h2>`;
+      for(const sec of sections){
+        const items = sec.items; if(!items || !items.length) continue;
         out += `<section class="section">`;
-        if (sec.name) out += `<h3>${sec.name}</h3>`;
-
+        if(sec.name) out += `<h3>${sec.name}</h3>`;
         out += `<ul class="items">`;
-        for (const row of items){
+        for(const row of items){
           const price = row.price_text ? nb(row.price_text) : fmtPriceCp(row.price_cp);
           const btcClass = row.is_btc ? " btc" : "";
           out += `
@@ -490,24 +432,16 @@
         out += `</ul></section>`;
       }
 
-      // Footer (optional – blank by default)
-      out += `<div class="footer">
-                <div class="footLeft"></div>
-                <div class="footRight"></div>
-              </div>`;
-
+      out += `<div class="footer"><div class="footLeft"></div><div class="footRight"></div></div>`;
       els.paperInner.innerHTML = out;
     }
 
-    // Kick off
+    // Start
     (async function(){
-      try{
-        await loadData();
-      }catch(err){
+      try{ await loadData(); }
+      catch(err){
         console.error(err);
-        $("#paperInner").innerHTML = `
-          <h2>Phandalin Merchants</h2>
-          <p>We couldn't load the menu just now. Please try refresh.</p>`;
+        $("#paperInner").innerHTML = `<h2>Phandalin Merchants</h2><p>We couldn't load the menu just now. Please try refresh.</p>`;
       }
     })();
   </script>
