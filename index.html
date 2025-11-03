@@ -91,10 +91,16 @@
     }
     .icon-btn:focus{ outline:2px solid #e7d6b6; outline-offset:2px; border-radius:3px; }
 
-    /* Screen-reader-only text */
+    /* Accessibility helpers */
     .sr-only{
       position:absolute; width:1px; height:1px; padding:0; margin:-1px;
       overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    }
+
+    /* --- Option 2 mobile behavior: cap price width + allow wrapping --- */
+    @media (max-width: 640px){
+      .item{ grid-template-columns: minmax(0, 1fr) minmax(0, 45%); }
+      .price{ white-space: normal; text-align: right; }
     }
 
     @media print{
@@ -117,7 +123,6 @@
         <label class="muted">
           <input type="checkbox" id="btcToggle" /> Show below counter
         </label>
-        <!-- Single icon button toggles locked/unlocked -->
         <button id="btcLockBtn" type="button" class="icon-btn" title="Unlock below-counter items" aria-label="Unlock below-counter items">
           <svg class="ico" aria-hidden="true"><use href="#ico-lock-closed"/></svg>
         </button>
@@ -125,7 +130,7 @@
     </div>
   </nav>
 
-  <!-- Inline SVG symbol defs (monochrome, crest-tinted when unlocked) -->
+  <!-- Inline SVG symbol defs -->
   <svg width="0" height="0" style="position:absolute"><defs>
     <symbol id="ico-lock-closed" viewBox="0 0 24 24">
       <path fill="none" stroke="currentColor" stroke-width="1.75"
@@ -207,6 +212,11 @@
       return n+"\u00A0cp";
     }
     const nb = s => (s||"").toString().replace(/\s/g,"\u00A0");
+
+    // NEW: add wrap hints after each middle dot so long variant strings can wrap
+    function addWrapHints(priceStr){
+      return nb(priceStr).replace(/·/g, '·<wbr>');
+    }
 
     // =========================
     // DATA
@@ -410,7 +420,7 @@
         if(sec.name) out+=`<h3>${sec.name}</h3>`;
         out+=`<ul class="items">`;
         for(const row of items){
-          const price = row.price_text ? nb(row.price_text) : fmtPriceCp(row.price_cp);
+          const price = row.price_text ? addWrapHints(row.price_text) : fmtPriceCp(row.price_cp);
           const btcClass = row.is_btc ? " btc" : "";
           out += `
             <li class="item${btcClass}" aria-label="${row.item}">
