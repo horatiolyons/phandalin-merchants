@@ -1,261 +1,466 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Phandalin Merchants</title>
-<style>
-  :root{--w:900px;--ink:#2b211b;--quiet:#6b5b53;--acc:#7a5b3a;--bg:#efe7d5;--edge:#d8c8a9;--rule:rgba(0,0,0,.08);--font:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif}
-  body{margin:0;background:#1a1a1a;color:var(--ink);font-family:var(--font);line-height:1.35}
-  .skin-notice{--bg:#fbf7ed;--edge:#e8dcc1;--acc:#744210}
-  .controls{position:sticky;top:0;z-index:5;display:flex;gap:1rem;align-items:center;padding:.7rem 1rem;color:#eee;background:#111;border-bottom:1px solid #222}
-  .controls select,.controls input{font:inherit;color:#eee;background:#181818;border:1px solid #333;padding:.35rem .5rem;border-radius:.35rem}
-  .sheet{max-width:var(--w);margin:1.1rem auto 1.6rem;padding:1.6rem 1.4rem 1.8rem;position:relative;background:var(--bg,#efe7d5);box-shadow:0 1px 0 rgba(0,0,0,.08),0 10px 30px rgba(0,0,0,.35);border-radius:6px}
-  .sheet:before{content:"";position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 110%,transparent 0 70%,rgba(0,0,0,.12) 100%),radial-gradient(65% 60% at 50% -10%,var(--edge,#d8c8a9),transparent 70%);mix-blend-mode:multiply;border-radius:6px}
-  header{margin-bottom:.8rem}.title{font-size:clamp(1.45rem,3.5vw,2rem);letter-spacing:.02em;color:var(--acc)}.subtitle{margin:.1rem 0 0;color:var(--quiet);font-style:italic}
-  .section{margin:1rem 0;break-inside:avoid}.section h2{font-size:.98rem;letter-spacing:.08em;color:var(--acc);font-variant-caps:small-caps;margin:.45rem 0 .3rem;padding-top:.2rem;border-top:1px solid var(--rule)}
-  .items{display:grid;gap:.38rem}
-  .line{display:grid;grid-template-columns:1fr auto auto;align-items:baseline;gap:.5rem}
-  .name{min-width:0}
-  .dots{height:1px;background-image:radial-gradient(circle,currentColor .7px,transparent .7px);background-size:6px 1px;background-repeat:repeat-x;background-position:left bottom;color:var(--quiet);align-self:center}
-  .price{white-space:nowrap;font-variant-numeric:tabular-nums}
-  .desc{grid-column:1/-1;color:var(--quiet);font-size:.9rem;margin:.05rem 0 0;padding-left:.7rem}
-  .hide-gray [data-gray="1"]{display:none}
-  footer{margin-top:1rem;display:flex;gap:1rem;align-items:baseline;color:var(--quiet);font-size:.9rem}
-  footer .foot-left{flex:1}
-  .debug{max-width:var(--w);margin:.5rem auto 0;padding:0 1rem;color:#bbb;font-size:.9rem;white-space:pre-wrap}
-  @media print{.controls{display:none!important}body{background:none}.sheet{box-shadow:none;margin:0}}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Phandalin Merchants</title>
+  <style>
+    /* =========================
+       THEME TOKENS (can tweak)
+       ========================= */
+    :root{
+      --ink:#2b211b;
+      --quiet:#6b5b53;
+      --accent:#7a5b3a;
+      --paper:#efe7d5;
+      --paper-edge:#d8c8a9;
+      --rule: rgba(0,0,0,.08);
+      --crest:#8a5a2b;
+      --w:900px;
+    }
+
+    /* Skins */
+    .skin-parchment{
+      --paper:#efe7d5; --paper-edge:#d8c8a9; --accent:#7a5b3a;
+    }
+    .skin-noticeboard{
+      --paper:#fbf7ed; --paper-edge:#e8dcc1; --accent:#744210;
+    }
+
+    /* Base */
+    html,body{margin:0;padding:0;background:#e8e0cf;color:var(--ink);}
+    body{
+      font-family:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif;
+      line-height:1.35;
+    }
+    .wrap{max-width:var(--w); margin:0 auto; padding:0 12px;}
+
+    /* Controls (nav) */
+    nav.controls{
+      position:sticky; top:0; z-index:10;
+      background:rgba(30,22,18,.9);
+      color:#f6f0e6;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(2px);
+    }
+    .controls .inner{
+      display:flex; align-items:center; gap:.8rem;
+      padding:.5rem .8rem;
+    }
+    .controls label{font-size:.95rem;}
+    .controls select, .controls input[type="checkbox"]{
+      accent-color:#c5a77b;
+    }
+    .controls select{
+      background:#f6f0e6; color:#221a16; border:1px solid #b8a58b; border-radius:4px; padding:.25rem .5rem;
+    }
+    .spacer{flex:1}
+
+    /* Paper sheet */
+    main{padding:1.1rem 0 2rem;}
+    .paper{
+      background:var(--paper);
+      margin:0 auto;
+      border-radius:6px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08);
+      position:relative;
+      overflow:hidden;
+    }
+    .paper::before{
+      /* top edge glow */
+      content:""; position:absolute; inset:0;
+      background:
+        radial-gradient(120% 40% at 50% -10%, var(--paper-edge), transparent 60%),
+        radial-gradient(100% 120% at 50% 120%, rgba(0,0,0,.06), transparent 60%);
+      mix-blend-mode:multiply; pointer-events:none;
+    }
+    .paper .pad{padding:1.4rem 1.2rem;}
+
+    /* Titles */
+    h2{
+      margin:.2rem 0 .5rem 0;
+      font-size:1.8rem; color:var(--accent);
+    }
+    h3{
+      margin:.45rem 0 .3rem;
+      padding-top:.45rem;
+      border-top:1px solid var(--rule);
+      font-variant: small-caps;
+      letter-spacing:.08em;
+      font-size:1.05rem;
+      color:var(--accent);
+    }
+
+    /* Sections & items */
+    .section{break-inside:avoid; page-break-inside:avoid;}
+    .items{display:block; margin:0; padding:0; list-style:none;}
+    .item{
+      display:grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      grid-column-gap:.35rem;
+      align-items:end;
+      margin:0; padding:0;
+    }
+    .item + .item{ margin-top:.38rem; }
+
+    .name{
+      min-width:0;
+      overflow-wrap:anywhere;
+    }
+
+    .line{
+      display:flex; align-items:flex-end; gap:.35rem;
+    }
+    .dots{
+      flex:1 1 auto; height:1px; transform:translateY(-2px);
+      background-image: radial-gradient(circle, currentColor .7px, transparent .7px);
+      background-size: 6px 1px; background-repeat: repeat-x;
+      opacity:.55;
+    }
+    .price{
+      white-space:nowrap;
+      font-variant-numeric: tabular-nums;
+      justify-self:end;
+    }
+
+    .desc{
+      grid-column:1 / -1;
+      font-size:.95rem; color:var(--quiet);
+      margin:.08rem 0 0 0;
+      padding-left:.7rem;
+    }
+
+    /* Footer (optional notes) */
+    .footer{
+      display:flex; gap:.8rem; margin-top:1rem; color:var(--quiet);
+      border-top:1px solid var(--rule); padding-top:.6rem;
+    }
+    .footLeft{flex:1}
+    .footRight{text-align:right; flex:1}
+
+    /* Accessibility helpers */
+    a.skip{position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;}
+    a.skip:focus{position:static; width:auto; height:auto; background:#fff; color:#000; padding:.25rem .5rem;}
+
+    /* Print */
+    @media print{
+      nav.controls{display:none !important;}
+      body{background:var(--paper);}
+      .paper{box-shadow:none;}
+    }
+  </style>
 </head>
 <body>
-  <div class="controls">
-    <label>Merchant
-      <select id="merchantSelect"></select>
-    </label>
-    <label><input id="underdeskToggle" type="checkbox"> Show under-the-desk</label>
-  </div>
+  <a href="#main" class="skip">Skip to content</a>
 
-  <article id="paper" class="sheet hide-gray">
-    <header>
-      <div class="title" id="menuTitle">Loading…</div>
-      <div class="subtitle" id="menuSubtitle"></div>
-    </header>
-    <main id="menu"></main>
-    <footer>
-      <div class="foot-left" id="footLeft"></div>
-      <div class="foot-right" id="footRight"></div>
-    </footer>
-  </article>
-  <div class="debug" id="debug"></div>
+  <nav class="controls" aria-label="Menu controls">
+    <div class="wrap inner">
+      <label for="merchant">Merchant</label>
+      <select id="merchant" name="merchant" aria-label="Select merchant">
+        <!-- populated by JS in fixed order, falling back to dataset -->
+      </select>
+      <div class="spacer"></div>
+      <label><input type="checkbox" id="btcToggle" /> Show below counter</label>
+    </div>
+  </nav>
 
-<script>
-/* ====== CONFIG ====== */
-var SHEET_ID = "1sKVmkiC_8wpenEXb_692htiNgHv9e0Vz_FLEx4ttqGc"; // share URL doc id
-var TAB      = "main";  // your tab name
-var PUB_E_ID = "2PACX-1vTJ-jHhfMgMuQryuOFEzBmhgjvaQYeLJ2hwoaVMayEMqFVRfk5CsxZ-wA7-rdpRQ4Bl1CdUC2p0pKrR"; // publish-to-web id (the /e/… part)
-var PUB_GID  = "0";     // gid for the 'main' tab (you said it's 0)
-var SHOW_DEBUG = true;  // show diagnostics under the page
+  <main id="main">
+    <div class="wrap">
+      <article id="paper" class="paper skin-parchment" aria-live="polite">
+        <div class="pad" id="paperInner">
+          <!-- content injected -->
+        </div>
+      </article>
+    </div>
+  </main>
 
-/* ====== Utils ====== */
-function canon(s){ return String(s||'').toLowerCase().replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').replace(/[^\w ]+/g,'').replace(/\s+/g,'_'); }
-function toInt(v){ var s=String(v==null?"":v).trim(); if(!s) return null; var n=parseInt(s,10); return isFinite(n)?n:null; }
-function toBool(v){ return /^(true|yes|y|1)$/i.test(String(v==null?"":v).trim()); }
-function fmtCp(cp){ if(cp==null) return ""; if(cp%100===0) return (cp/100)+"\u00A0gp"; if(cp%10===0) return (cp/10)+"\u00A0sp"; return cp+"\u00A0cp"; }
-function setDebug(msg){ if(SHOW_DEBUG){ document.getElementById('debug').textContent = msg; } }
+  <script>
+    // =========================
+    // CONFIG
+    // =========================
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJ-jHhfMgMuQryuOFEzBmhgjvaQYeLJ2hwoaVMayEMqFVRfk5CsxZ-wA7-rdpRQ4Bl1CdUC2p0pKrR/pub?output=csv";
 
-/* ====== Sources ====== */
-function gvizUrl(tab){ return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:json&sheet="+encodeURIComponent(tab)+"&t="+Date.now(); }
-function csvUrl(id,gid){ return "https://docs.google.com/spreadsheets/d/e/"+id+"/pub?gid="+gid+"&single=true&output=csv&t="+Date.now(); }
+    // Fixed display order; any extra merchants found in data append after (alphabetically)
+    const FIXED_ORDER = [
+      "Stonehill Inn",
+      "Barthen’s Provisions",
+      "Hilda’s Remedies",
+      "Miner’s Exchange"
+    ];
 
-/* GViz fetch (no fragile regex; slice braces) */
-function fetchGViz(tab){
-  return fetch(gvizUrl(tab), {cache:'no-store'})
-    .then(function(r){ if(!r.ok) throw new Error("GViz HTTP "+r.status); return r.text(); })
-    .then(function(text){
-      var start = text.indexOf('{'), end = text.lastIndexOf('}');
-      if (start === -1 || end === -1 || end <= start) throw new Error("GViz wrapper not found");
-      var json = JSON.parse(text.slice(start, end+1));
-      var cols = json.table.cols.map(function(c){ return c.label || c.id; });
-      var keys = cols.map(canon);
-      var rows = json.table.rows.map(function(r){
-        var o = {};
-        for (var i=0;i<keys.length;i++){ var c = r.c[i]; o[keys[i]] = (c && c.v!=null) ? c.v : ""; }
-        return o;
-      });
-      return { rows: rows, cols: cols, keys: keys, source: "GViz" };
-    });
-}
+    const MERCHANT_SKIN = {
+      "stonehill-inn": "skin-parchment",
+      "barthens-provisions": "skin-parchment",
+      "hildas-remedies": "skin-parchment",
+      "miners-exchange": "skin-noticeboard"
+    };
 
-/* CSV fetch with basic parser */
-function fetchCSV(id,gid){
-  return fetch(csvUrl(id,gid), {cache:'no-store'})
-    .then(function(r){ if(!r.ok) throw new Error("CSV HTTP "+r.status); return r.text(); })
-    .then(function(text){
-      text = text.replace(/\r/g,'');
-      var lines = text.split('\n').filter(function(l){ return l.length; });
-      if (!lines.length) return { rows: [], cols: [], keys: [], source: "CSV (empty)" };
-      var headers = lines.shift();
-      function splitCSV(line){
-        var out=[], cur="", inQ=false;
-        for(var i=0;i<line.length;i++){
-          var ch=line[i];
-          if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ; } }
-          else if(ch===',' && !inQ){ out.push(cur); cur=""; }
-          else { cur+=ch; }
+    // =========================
+    // UTILITIES
+    // =========================
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+    // Normalize strings for keys/slugs (strip punctuation variants)
+    function slugify(s){
+      return (s||"").toString()
+        .normalize("NFKD")
+        .replace(/[\u2019\u2018\u201C\u201D]/g,"'") // smart quotes -> '
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9]+/gi,'-')
+        .replace(/^-+|-+$/g,'')
+        .toLowerCase();
+    }
+
+    // CSV parser that handles quotes/commas/newlines
+    function parseCSV(text){
+      const rows = [];
+      let i=0, field="", row=[], inQuotes=false;
+      const pushField = ()=>{ row.push(field); field=""; };
+      const pushRow = ()=>{ rows.push(row); row=[]; };
+      while(i<text.length){
+        const c = text[i];
+        if(inQuotes){
+          if(c === '"'){
+            if(text[i+1] === '"'){ field+='"'; i++; } // escaped quote
+            else { inQuotes=false; }
+          } else {
+            field+=c;
+          }
+        } else {
+          if(c === '"'){ inQuotes=true; }
+          else if(c === ','){ pushField(); }
+          else if(c === '\r'){ /* ignore */ }
+          else if(c === '\n'){ pushField(); pushRow(); }
+          else { field+=c; }
         }
-        out.push(cur); return out;
+        i++;
       }
-      var rawCols = splitCSV(headers).map(function(s){ return s.trim(); });
-      var keys = rawCols.map(canon);
-      var rows = lines.map(function(line){
-        var cells = splitCSV(line), o={};
-        for(var i=0;i<keys.length;i++){ o[keys[i]] = (cells[i]||"").trim(); }
-        return o;
+      // last field/row
+      if(field.length>0 || row.length>0){ pushField(); pushRow(); }
+      return rows;
+    }
+
+    function toBool(v){ return (v||"").toString().trim().toUpperCase()==="TRUE"; }
+
+    function fmtPriceCp(cp){
+      if(cp==null || cp==="") return "—";
+      const n = Number(cp);
+      if(!Number.isFinite(n)) return "—";
+      if(n % 100 === 0) return (n/100) + "\u00A0gp";
+      if(n % 10 === 0)  return (n/10)  + "\u00A0sp";
+      return n + "\u00A0cp";
+    }
+
+    function nb(s){ return (s||"").toString().replace(/\s/g, "\u00A0"); }
+
+    // =========================
+    // DATA FETCH & PREP
+    // =========================
+    let RAW = [];  // array of row objects
+    let MERCHANTS = []; // discovered set
+
+    async function loadData(){
+      const res = await fetch(CSV_URL, {cache:"no-store"});
+      if(!res.ok) throw new Error("Failed to fetch CSV");
+      const txt = await res.text();
+      const rows = parseCSV(txt);
+
+      // Expect headers: sort, merchant, section, item, description, price_cp, price_text, is_btc
+      const [hdr, ...body] = rows;
+      const idx = {};
+      hdr.forEach((h,i)=> idx[h.trim().toLowerCase()] = i);
+
+      RAW = body
+        .filter(r => r.length && r.some(cell => cell && cell.trim()!=="")) // skip empties
+        .map(r => ({
+          sort: Number(r[idx["sort"]] ?? ""),
+          merchant: (r[idx["merchant"]] ?? "").trim(),
+          section: (r[idx["section"]] ?? "").trim(),
+          item: (r[idx["item"]] ?? "").trim(),
+          description: (r[idx["description"]] ?? "").trim(),
+          price_cp: (r[idx["price_cp"]] ?? "").trim(),
+          price_text: (r[idx["price_text"]] ?? "").trim(),
+          is_btc: toBool(r[idx["is_btc"]])
+        }));
+
+      // Collect merchants
+      const set = new Set(RAW.map(r => r.merchant).filter(Boolean));
+      MERCHANTS = Array.from(set);
+
+      initUI();
+      render();
+    }
+
+    // =========================
+    // STATE
+    // =========================
+    const els = {
+      merchant: $("#merchant"),
+      btc: $("#btcToggle"),
+      paper: $("#paper"),
+      paperInner: $("#paperInner")
+    };
+
+    // per-merchant unlock persisted
+    function getBtcState(){
+      try{ return JSON.parse(localStorage.getItem("btcUnlocked") || "{}"); }
+      catch{ return {}; }
+    }
+    function setBtcState(obj){
+      localStorage.setItem("btcUnlocked", JSON.stringify(obj||{}));
+    }
+
+    function currentMerchant(){
+      return els.merchant.value;
+    }
+    function merchantSlugToName(slug){
+      // find by slug in known merchants
+      const match = MERCHANTS.find(m => slugify(m)===slug);
+      return match || slug; // fallback
+    }
+
+    // =========================
+    // UI INIT
+    // =========================
+    function initUI(){
+      // Populate merchant <select> in fixed order, then extras
+      const fixed = FIXED_ORDER.filter(n => MERCHANTS.includes(n));
+      const extras = MERCHANTS.filter(m => !fixed.includes(m)).sort((a,b)=>a.localeCompare(b));
+      const order = [...fixed, ...extras];
+
+      els.merchant.innerHTML = order.map(name=>{
+        const val = slugify(name);
+        return `<option value="${val}">${name}</option>`;
+      }).join("");
+
+      // Restore selection from hash/localStorage or default to first fixed
+      const hashParams = new URLSearchParams(location.hash.slice(1));
+      const desired = hashParams.get("merchant");
+      const defaultSlug = slugify(order[0] || "");
+      els.merchant.value = desired && order.some(n=>slugify(n)===desired) ? desired : defaultSlug;
+
+      // BTC checkbox state (per-merchant)
+      const btcAll = getBtcState();
+      els.btc.checked = !!btcAll[currentMerchant()];
+
+      // Events
+      els.merchant.addEventListener("change", ()=>{
+        // update BTC checkbox for this merchant
+        const btc = getBtcState();
+        els.btc.checked = !!btc[currentMerchant()];
+        updateHash();
+        render();
       });
-      return { rows: rows, cols: rawCols, keys: keys, source: "CSV (pubweb gid="+gid+")" };
-    });
-}
+      els.btc.addEventListener("change", ()=>{
+        const btc = getBtcState();
+        btc[currentMerchant()] = els.btc.checked;
+        setBtcState(btc);
+        updateHash();
+        render();
+      });
 
-/* ====== Column resolver (tolerant) ====== */
-function resolveColumns(keys){
-  // return object mapping logical names -> actual key string
-  function findKey(names){
-    for (var i=0;i<names.length;i++){
-      var want = names[i];
-      for (var j=0;j<keys.length;j++){ if (keys[j] === want) return keys[j]; }
+      // initialize hash for deep-linking
+      updateHash();
     }
-    return null;
-  }
-  var map = {};
-  // primary names (canonical)
-  var want = {
-    merchant:   ['merchant','shop','vendor'],
-    category:   ['category','section'],
-    item:       ['item','name','product'],
-    description:['description','desc','notes'],
-    pricecp:    ['pricecp','price_in_cp','cp','pricecopper','price_copper','price_cp','price'],
-    pricetext:  ['pricetext','price_text','price_display','price_readable','pricehuman','price_str','pricetxt'],
-    underdesk:  ['under_the_desk','underthedesk','under_desk','gray','grey','hidden','underdesk','u_d']
-  };
-  for (var k in want){ map[k] = findKey(want[k]); }
 
-  // If critical ones missing, assume default positions: M | C | I | D | PriceCp | PriceText | UnderDesk
-  var missing = !map.merchant || !map.item;
-  if (missing && keys.length >= 6){
-    map.merchant   = map.merchant   || keys[0];
-    map.category   = map.category   || keys[1];
-    map.item       = map.item       || keys[2];
-    map.description= map.description|| keys[3];
-    map.pricecp    = map.pricecp    || keys[4];
-    map.pricetext  = map.pricetext  || keys[5];
-    map.underdesk  = map.underdesk  || keys[6] || null;
-  }
-  return map;
-}
-
-/* ====== Build merchants from generic rows+mapping ====== */
-function buildMerchants(rows, map){
-  var M = {};
-  for (var i=0;i<rows.length;i++){
-    var r = rows[i];
-    var merchant = String(map.merchant ? r[map.merchant] : "").trim();
-    var category = String(map.category ? r[map.category] : "General").trim();
-    var item     = String(map.item ? r[map.item] : "").trim();
-    if (!merchant || !item) continue;
-
-    if (!M[merchant]){
-      M[merchant] = { key: merchant.toLowerCase().replace(/[^a-z0-9]+/g,''), title: merchant, subtitle: "", allowDescs: !/stonehill/i.test(merchant), footLeft:"", footRight:"", sections: [] };
+    function updateHash(){
+      const params = new URLSearchParams();
+      params.set("merchant", currentMerchant());
+      if(els.btc.checked) params.set("btc","1");
+      location.hash = params.toString();
     }
-    var sec=null, secs=M[merchant].sections;
-    for (var j=0;j<secs.length;j++){ if (secs[j].title===category){ sec=secs[j]; break; } }
-    if(!sec){ sec={ title: category, items: [] }; secs.push(sec); }
 
-    var desc = String(map.description ? r[map.description] : "").trim();
-    var priceText = String(map.pricetext ? r[map.pricetext] : "").trim(); if (!priceText) priceText = undefined;
-    var cp = priceText ? undefined : toInt(map.pricecp ? r[map.pricecp] : "");
-    var gray = toBool(map.underdesk ? r[map.underdesk] : "");
+    // =========================
+    // RENDER
+    // =========================
+    function render(){
+      const merchSlug = currentMerchant();
+      const merchName = merchantSlugToName(merchSlug);
+      const showBTC = els.btc.checked;
 
-    sec.items.push({ name:item, desc: (desc||undefined), cp:cp, priceText:priceText, gray:gray, forceDesc:false });
-  }
-  return M;
-}
+      // Skin
+      const skinClass = MERCHANT_SKIN[merchSlug] || "skin-parchment";
+      els.paper.className = `paper ${skinClass}`;
 
-/* ====== Rendering ====== */
-function setSkin(el, merchantName){ el.classList.remove('skin-notice'); if (/miner/i.test(merchantName)) el.classList.add('skin-notice'); }
-function renderMerchant(M, key){
-  var m = M[key], paper=document.getElementById('paper'), menu=document.getElementById('menu');
-  setSkin(paper, m.title);
-  document.getElementById('menuTitle').textContent = m.title;
-  document.getElementById('menuSubtitle').textContent = m.subtitle || "";
-  document.getElementById('footLeft').textContent = m.footLeft || "";
-  document.getElementById('footRight').textContent = m.footRight || "";
+      // Filter rows for this merchant, respecting BTC
+      const rows = RAW.filter(r => slugify(r.merchant)===merchSlug && (showBTC || !r.is_btc));
 
-  var hideGray = paper.classList.contains('hide-gray'); menu.innerHTML = '';
-  for (var si=0; si<m.sections.length; si++){
-    var sec = m.sections[si], items = sec.items||[], visible=[];
-    for (var k=0;k<items.length;k++){ if (!hideGray || !items[k].gray) visible.push(items[k]); }
-    if (!visible.length) continue;
+      // Group by section
+      const bySection = new Map();
+      for(const r of rows){
+        const sec = r.section || "";
+        if(!bySection.has(sec)) bySection.set(sec, []);
+        bySection.get(sec).push(r);
+      }
 
-    var wrap=document.createElement('section'); wrap.className='section';
-    var h2=document.createElement('h2'); h2.textContent=sec.title; wrap.appendChild(h2);
-    var list=document.createElement('div'); list.className='items';
+      // Sort each section: sort asc (numbers first), then item A→Z
+      for(const [k, arr] of bySection){
+        arr.sort((a,b)=>{
+          const sa = Number.isFinite(a.sort) ? a.sort : Infinity;
+          const sb = Number.isFinite(b.sort) ? b.sort : Infinity;
+          if(sa !== sb) return sa - sb;
+          return a.item.localeCompare(b.item);
+        });
+        // If a section is empty (shouldn't be, but guard), delete it
+        if(arr.length===0) bySection.delete(k);
+      }
 
-    for (var t=0;t<visible.length;t++){
-      var it=visible[t], line=document.createElement('div'); line.className='line'; if(it.gray) line.dataset.gray="1";
-      var nm=document.createElement('span'); nm.className='name'; nm.textContent=it.name;
-      var dots=document.createElement('span'); dots.className='dots';
-      var pr=document.createElement('span'); pr.className='price'; pr.textContent = it.priceText ? it.priceText : fmtCp(it.cp);
-      line.appendChild(nm); line.appendChild(dots); line.appendChild(pr);
-      if (it.desc && (m.allowDescs || it.forceDesc)){ var d=document.createElement('div'); d.className='desc'; d.textContent=it.desc; line.appendChild(d); }
-      list.appendChild(line);
+      // Build HTML
+      let out = "";
+      out += `<h2>${merchName}</h2>`;
+
+      // Sections in natural order of appearance in data (stable) with a simple tie-break by name
+      const orderedSections = Array.from(bySection.keys()).sort((a,b)=>{
+        // keep empty-name sections (if any) last
+        if(!a && b) return 1;
+        if(!b && a) return -1;
+        return a.localeCompare(b);
+      });
+
+      for(const secName of orderedSections){
+        const items = bySection.get(secName);
+        if(!items || items.length===0) continue; // hide empty sections
+
+        out += `<section class="section">`;
+        if(secName){ out += `<h3>${secName}</h3>`; }
+
+        out += `<ul class="items">`;
+        for(const row of items){
+          const price = row.price_text ? nb(row.price_text) : fmtPriceCp(row.price_cp);
+          out += `
+            <li class="item" aria-label="${row.item}">
+              <div class="line name">
+                <span>${row.item}</span>
+                <span class="dots" aria-hidden="true"></span>
+              </div>
+              <div class="price">${price}</div>
+              ${row.description ? `<div class="desc">${row.description}</div>` : ``}
+            </li>`;
+        }
+        out += `</ul></section>`;
+      }
+
+      // Footer (optional – blank by default; easy to wire later)
+      out += `<div class="footer">
+                <div class="footLeft"></div>
+                <div class="footRight"></div>
+              </div>`;
+
+      els.paperInner.innerHTML = out;
     }
-    wrap.appendChild(list); menu.appendChild(wrap);
-  }
-}
 
-/* ====== Boot (pick best source, show diagnostics) ====== */
-(function boot(){
-  setDebug("Loading data…");
-  Promise.allSettled([ fetchGViz(TAB), fetchCSV(PUB_E_ID, PUB_GID) ]).then(function(results){
-    var sources = [];
-    for (var i=0;i<results.length;i++){
-      if (results[i].status === "fulfilled") sources.push(results[i].value);
-    }
-    if (!sources.length){ throw new Error("Both sources failed to fetch."); }
-
-    var picked=null, diag=""; // choose the one that yields merchants
-    for (var s=0;s<sources.length;s++){
-      var p=sources[s];
-      var map = resolveColumns(p.keys);
-      var M = buildMerchants(p.rows, map);
-      var names = Object.keys(M);
-      diag += p.source+" columns: "+(p.cols||[]).join(" | ")+"\n";
-      diag += "Detected keys: "+(p.keys||[]).join(" | ")+"\n";
-      diag += "Resolved map: "+JSON.stringify(map)+"\n";
-      diag += "Merchants parsed: "+names.join(", ")+"\n\n";
-      if (names.length && !picked){ picked = { M:M, names:names, map:map, source:p.source }; }
-    }
-    setDebug(diag || "No data parsed.");
-
-    if (!picked) throw new Error("No merchants found from either source.");
-
-    var MERCHANTS = picked.M, names = picked.names;
-    // Fill dropdown
-    var select=document.getElementById('merchantSelect'), byKey={};
-    names.sort(function(a,b){ var sa=/stonehill/i.test(a)?-1:0, sb=/stonehill/i.test(b)?-1:0; return (sa-sb)||a.localeCompare(b); });
-    for (var i=0;i<names.length;i++){ var m=MERCHANTS[names[i]]; byKey[m.key]=m; var opt=document.createElement('option'); opt.value=m.key; opt.textContent=names[i]; select.appendChild(opt); }
-    select.addEventListener('change', function(e){ renderMerchant(byKey, e.target.value); });
-    document.getElementById('underdeskToggle').addEventListener('change', function(e){ document.getElementById('paper').classList.toggle('hide-gray', !e.target.checked); renderMerchant(byKey, select.value); });
-
-    var firstKey = byKey['stonehillinn'] ? 'stonehillinn' : byKey[MERCHANTS[names[0]].key].key;
-    select.value = firstKey; renderMerchant(byKey, firstKey);
-  }).catch(function(err){
-    document.getElementById('menuTitle').textContent = 'Load failed';
-    document.getElementById('menu').textContent =
-      'Could not load data from GViz or CSV. Check: 1) Sheet sharing “Anyone with the link: Viewer”. 2) Tab name "'+TAB+'". 3) Publish-to-web gid='+PUB_GID+' points to the right tab.';
-    setDebug(String(err));
-  });
-})();
-</script>
+    // Kick off
+    (async function(){
+      try{
+        await loadData();
+      }catch(err){
+        console.error(err);
+        $("#paperInner").innerHTML = `
+          <h2>Phandalin Merchants</h2>
+          <p>We couldn't load the menu just now. Please try refresh.</p>`;
+      }
+    })();
+  </script>
 </body>
 </html>
