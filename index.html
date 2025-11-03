@@ -23,7 +23,7 @@
   .hide-gray [data-gray="1"]{display:none}
   footer{margin-top:1rem;display:flex;gap:1rem;align-items:baseline;color:var(--quiet);font-size:.9rem}
   footer .foot-left{flex:1}
-  .debug{max-width:var(--w);margin:.5rem auto 0;padding:0 1rem;color:#bbb;font-size:.9rem}
+  .debug{max-width:var(--w);margin:.5rem auto 0;padding:0 1rem;color:#bbb;font-size:.9rem;white-space:pre-wrap}
   @media print{.controls{display:none!important}body{background:none}.sheet{box-shadow:none;margin:0}}
 </style>
 </head>
@@ -50,88 +50,66 @@
 
 <script>
 /* ====== CONFIG ====== */
-var SHEET_ID = "1sKVmkiC_8wpenEXb_692htiNgHv9e0Vz_FLEx4ttqGc"; // your share URL doc id
-var TAB      = "main"; // your tab
-var PUB_E_ID = "2PACX-1vTJ-jHhfMgMuQryuOFEzBmhgjvaQYeLJ2hwoaVMayEMqFVRfk5CsxZ-wA7-rdpRQ4Bl1CdUC2p0pKrR"; // your publish-to-web id
-var PUB_GID  = "0"; // change if your 'main' tab is not gid=0
-var DEBUG    = location.search.indexOf('debug=1') !== -1;
+var SHEET_ID = "1sKVmkiC_8wpenEXb_692htiNgHv9e0Vz_FLEx4ttqGc"; // share URL doc id
+var TAB      = "main";  // your tab name
+var PUB_E_ID = "2PACX-1vTJ-jHhfMgMuQryuOFEzBmhgjvaQYeLJ2hwoaVMayEMqFVRfk5CsxZ-wA7-rdpRQ4Bl1CdUC2p0pKrR"; // publish-to-web id
+var PUB_GID  = "0";     // <<< REPLACE with the gid you copy from the pubhtml URL for the "main" tab
+var DEBUG    = true;    // show source + columns under the paper
 
-/* ====== Util ====== */
-function logDebug(msg){ if(DEBUG){ console.log(msg); } var d=document.getElementById('debug'); d.textContent = msg; }
+/* ====== Utils ====== */
+function setDebug(msg){ if(DEBUG){ document.getElementById('debug').textContent = msg; } }
 function canon(s){
-  return String(s||'')
-    .toLowerCase()
-    .replace(/\s+/g,' ')
-    .replace(/^\s+|\s+$/g,'')
-    .replace(/[^\w ]+/g,'')
-    .replace(/\s+/g,'_');
+  return String(s||'').toLowerCase().replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').replace(/[^\w ]+/g,'').replace(/\s+/g,'_');
 }
 function toInt(v){ var s=String(v==null?"":v).trim(); if(!s) return null; var n=parseInt(s,10); return isFinite(n)?n:null; }
 function toBool(v){ return /^(true|yes|y|1)$/i.test(String(v==null?"":v).trim()); }
 function fmtCp(cp){ if(cp==null) return ""; if(cp%100===0) return (cp/100)+"\u00A0gp"; if(cp%10===0) return (cp/10)+"\u00A0sp"; return cp+"\u00A0cp"; }
 
 /* ====== Fetchers ====== */
-function gvizUrl(tab){
-  return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:json&sheet="+encodeURIComponent(tab)+"&t="+Date.now();
-}
-function csvUrl(pubEId, gid){
-  return "https://docs.google.com/spreadsheets/d/e/"+pubEId+"/pub?gid="+gid+"&single=true&output=csv&t="+Date.now();
-}
+function gvizUrl(tab){ return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:json&sheet="+encodeURIComponent(tab)+"&t="+Date.now(); }
+function csvUrl(id,gid){ return "https://docs.google.com/spreadsheets/d/e/"+id+"/pub?gid="+gid+"&single=true&output=csv&t="+Date.now(); }
 
 function fetchGViz(tab){
   return fetch(gvizUrl(tab), {cache:'no-store'})
     .then(function(r){ if(!r.ok) throw new Error("GViz HTTP "+r.status); return r.text(); })
     .then(function(text){
-      // Extract JSON by slicing from first { to last }
-      var start = text.indexOf('{');
-      var end   = text.lastIndexOf('}');
+      var start = text.indexOf('{'), end = text.lastIndexOf('}');
       if (start === -1 || end === -1 || end <= start) throw new Error("GViz wrapper not found");
       var json = JSON.parse(text.slice(start, end+1));
       var cols = json.table.cols.map(function(c){ return c.label || c.id; });
       var keys = cols.map(canon);
-      if (DEBUG) console.log("GViz columns:", cols, "→", keys);
       var rows = json.table.rows.map(function(r){
-        var o = {};
-        for (var i=0;i<keys.length;i++){
-          var cell = r.c[i];
-          o[keys[i]] = (cell && cell.v!=null) ? cell.v : "";
-        }
-        return o;
+        var o = {}; for (var i=0;i<keys.length;i++){ var c = r.c[i]; o[keys[i]] = (c && c.v!=null) ? c.v : ""; } return o;
       });
-      return rows;
+      return { rows: rows, cols: cols, keys: keys, source: "GViz" };
     });
 }
 
-function fetchCSV(pubEId, gid){
-  return fetch(csvUrl(pubEId, gid), {cache:'no-store'})
+function fetchCSV(id,gid){
+  return fetch(csvUrl(id,gid), {cache:'no-store'})
     .then(function(r){ if(!r.ok) throw new Error("CSV HTTP "+r.status); return r.text(); })
     .then(function(text){
-      // Simple CSV parser (handles commas inside quotes)
-      var lines = text.replace(/\r/g,'').split('\n').filter(function(l){ return l.length; });
+      text = text.replace(/\r/g,'');
+      var lines = text.split('\n').filter(function(l){ return l.length; });
       var headers = lines.shift();
-      // Split respecting quotes
       function splitCSV(line){
         var out=[], cur="", inQ=false;
         for(var i=0;i<line.length;i++){
           var ch=line[i];
-          if(ch==='"' ){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ; } }
+          if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ; } }
           else if(ch===',' && !inQ){ out.push(cur); cur=""; }
           else { cur+=ch; }
         }
-        out.push(cur);
-        return out;
+        out.push(cur); return out;
       }
       var rawCols = splitCSV(headers).map(function(s){ return s.trim(); });
       var keys = rawCols.map(canon);
-      if (DEBUG) console.log("CSV columns:", rawCols, "→", keys);
-
       var rows = lines.map(function(line){
-        var cells = splitCSV(line);
-        var o = {};
+        var cells = splitCSV(line), o={};
         for(var i=0;i<keys.length;i++){ o[keys[i]] = (cells[i]||"").trim(); }
         return o;
       });
-      return rows;
+      return { rows: rows, cols: rawCols, keys: keys, source: "CSV (pubweb gid="+gid+")" };
     });
 }
 
@@ -146,152 +124,90 @@ function buildMerchants(rows){
     if (!merchant || !item) continue;
 
     if (!M[merchant]){
-      M[merchant] = {
-        key: merchant.toLowerCase().replace(/[^a-z0-9]+/g,''),
-        title: merchant,
-        subtitle: "",
-        allowDescs: !/stonehill/i.test(merchant),
-        footLeft: "", footRight: "",
-        sections: []
-      };
+      M[merchant] = { key: merchant.toLowerCase().replace(/[^a-z0-9]+/g,''), title: merchant, subtitle: "", allowDescs: !/stonehill/i.test(merchant), footLeft:"", footRight:"", sections: [] };
     }
-    var sec = null;
-    for (var j=0;j<M[merchant].sections.length;j++){
-      if (M[merchant].sections[j].title === category){ sec = M[merchant].sections[j]; break; }
-    }
-    if(!sec){ sec = { title: category, items: [] }; M[merchant].sections.push(sec); }
+    var sec = null, secs = M[merchant].sections;
+    for (var j=0;j<secs.length;j++){ if (secs[j].title === category){ sec = secs[j]; break; } }
+    if(!sec){ sec = { title: category, items: [] }; secs.push(sec); }
 
     var priceText = String(r.pricetext||"").trim(); if (!priceText) priceText = undefined;
     var cp        = priceText ? undefined : toInt(r.pricecp);
-    var gray      = toBool(r.under_the_desk); // from “Under the desk?” (canonicalised)
+    var gray      = toBool(r.under_the_desk);
 
-    sec.items.push({
-      name: item,
-      desc: (String(r.description||"").trim() || undefined),
-      cp: cp, priceText: priceText,
-      gray: gray,
-      forceDesc: false
-    });
+    sec.items.push({ name:item, desc:(String(r.description||"").trim()||undefined), cp:cp, priceText:priceText, gray:gray, forceDesc:false });
   }
-  if (DEBUG) console.log("Parsed merchants:", Object.keys(M));
   return M;
 }
 
 /* ====== Rendering ====== */
-function setSkin(el, merchantName){
-  el.classList.remove('skin-notice');
-  if (/miner/i.test(merchantName)) el.classList.add('skin-notice'); // noticeboard for Miner’s Exchange
-}
+function setSkin(el, merchantName){ el.classList.remove('skin-notice'); if (/miner/i.test(merchantName)) el.classList.add('skin-notice'); }
 function renderMerchant(M, key){
-  var m = M[key];
-  var paper = document.getElementById('paper');
-  var menu  = document.getElementById('menu');
-
+  var m = M[key], paper=document.getElementById('paper'), menu=document.getElementById('menu');
   setSkin(paper, m.title);
   document.getElementById('menuTitle').textContent = m.title;
   document.getElementById('menuSubtitle').textContent = m.subtitle || "";
   document.getElementById('footLeft').textContent = m.footLeft || "";
   document.getElementById('footRight').textContent = m.footRight || "";
 
-  var hideGray = paper.classList.contains('hide-gray');
-  menu.innerHTML = '';
-
+  var hideGray = paper.classList.contains('hide-gray'); menu.innerHTML = '';
   for (var si=0; si<m.sections.length; si++){
-    var sec = m.sections[si];
-    var items = sec.items || [];
-    var visible = [];
-    for (var k=0;k<items.length;k++){
-      if (!hideGray || !items[k].gray) visible.push(items[k]);
-    }
-    if (visible.length === 0) continue;
+    var sec = m.sections[si], items = sec.items||[], visible=[];
+    for (var k=0;k<items.length;k++){ if (!hideGray || !items[k].gray) visible.push(items[k]); }
+    if (!visible.length) continue;
 
-    var wrap = document.createElement('section');
-    wrap.className = 'section';
-    var h2 = document.createElement('h2'); h2.textContent = sec.title;
-    wrap.appendChild(h2);
-
-    var list = document.createElement('div');
-    list.className = 'items';
+    var wrap=document.createElement('section'); wrap.className='section';
+    var h2=document.createElement('h2'); h2.textContent=sec.title; wrap.appendChild(h2);
+    var list=document.createElement('div'); list.className='items';
 
     for (var t=0;t<visible.length;t++){
-      var it = visible[t];
-      var line = document.createElement('div'); line.className = 'line';
-      if (it.gray) line.dataset.gray = "1";
-
-      var nm = document.createElement('span'); nm.className='name'; nm.textContent = it.name;
-      var dots = document.createElement('span'); dots.className='dots';
-      var pr = document.createElement('span'); pr.className='price';
-      pr.textContent = it.priceText ? it.priceText : fmtCp(it.cp);
-
+      var it=visible[t], line=document.createElement('div'); line.className='line'; if(it.gray) line.dataset.gray="1";
+      var nm=document.createElement('span'); nm.className='name'; nm.textContent=it.name;
+      var dots=document.createElement('span'); dots.className='dots';
+      var pr=document.createElement('span'); pr.className='price'; pr.textContent = it.priceText ? it.priceText : fmtCp(it.cp);
       line.appendChild(nm); line.appendChild(dots); line.appendChild(pr);
-
-      if (it.desc && (m.allowDescs || it.forceDesc)){
-        var d = document.createElement('div'); d.className='desc'; d.textContent = it.desc;
-        line.appendChild(d);
-      }
+      if (it.desc && (m.allowDescs || it.forceDesc)){ var d=document.createElement('div'); d.className='desc'; d.textContent=it.desc; line.appendChild(d); }
       list.appendChild(line);
     }
-    wrap.appendChild(list);
-    menu.appendChild(wrap);
+    wrap.appendChild(list); menu.appendChild(wrap);
   }
 }
 
-/* ====== Boot with GViz → CSV fallback ====== */
+/* ====== Boot (pick best source) ====== */
 (function boot(){
-  logDebug("Loading data…");
-  fetchGViz(TAB).then(function(rows){
-    if (!rows || !rows.length) throw new Error("GViz empty");
-    logDebug("Loaded via GViz");
-    start(rows);
-  }).catch(function(err){
-    console.warn("GViz failed:", err);
-    logDebug("GViz failed; trying CSV…");
-    return fetchCSV(PUB_E_ID, PUB_GID).then(function(rows){
-      if (!rows || !rows.length) throw new Error("CSV empty");
-      logDebug("Loaded via CSV");
-      start(rows);
-    }).catch(function(e2){
-      console.error("CSV failed:", e2);
-      document.getElementById('menuTitle').textContent = 'Load failed';
-      document.getElementById('menu').textContent =
-        'Could not load data from GViz or CSV.\n' +
-        'Check: 1) Sheet sharing “Anyone with the link: Viewer”. 2) Tab name "'+TAB+'". 3) Publish-to-web gid='+PUB_GID+' points to the right tab.\n' +
-        'Open the console for details.';
-    });
-  });
+  setDebug("Loading data…");
+  Promise.allSettled([ fetchGViz(TAB), fetchCSV(PUB_E_ID, PUB_GID) ]).then(function(results){
+    var g = results[0].status==="fulfilled" ? results[0].value : null;
+    var c = results[1].status==="fulfilled" ? results[1].value : null;
 
-  function start(rows){
-    var MERCHANTS = buildMerchants(rows);
-    var names = Object.keys(MERCHANTS);
-    if (names.length === 0) throw new Error("No rows parsed – check headers/values in the sheet.");
+    // Pick the source that yields more merchants
+    var choose = function(payload){ 
+      var M = buildMerchants(payload.rows);
+      var names = Object.keys(M);
+      return { M:M, names:names, payload:payload };
+    };
 
-    var select = document.getElementById('merchantSelect');
-    names.sort(function(a,b){
-      var sa = /stonehill/i.test(a) ? -1 : 0;
-      var sb = /stonehill/i.test(b) ? -1 : 0;
-      return (sa - sb) || a.localeCompare(b);
-    });
+    var pick = null, msg="";
+    if (g){ var gRes = choose(g); msg += "GViz columns: "+g.cols.join(" | ")+"\n"; msg += "GViz merchants: "+gRes.names.join(", ")+"\n\n"; if (gRes.names.length) pick = gRes; }
+    if (!pick && c){ var cRes = choose(c); msg += "CSV columns: "+c.cols.join(" | ")+"\n"; msg += "CSV merchants: "+cRes.names.join(", ")+"\n"; if (cRes.names.length) pick = cRes; }
+    setDebug(msg || "No data parsed from either source.");
 
-    var byKey = {};
-    for (var i=0;i<names.length;i++){
-      var m = MERCHANTS[names[i]];
-      byKey[m.key] = m;
-      var opt = document.createElement('option');
-      opt.value = m.key; opt.textContent = names[i];
-      select.appendChild(opt);
-    }
+    if (!pick){ throw new Error("No merchants found from GViz or CSV."); }
 
+    var MERCHANTS = pick.M, names = pick.names;
+
+    // Fill dropdown + handlers
+    var select = document.getElementById('merchantSelect'), byKey={};
+    names.sort(function(a,b){ var sa=/stonehill/i.test(a)?-1:0, sb=/stonehill/i.test(b)?-1:0; return (sa-sb)||a.localeCompare(b); });
+    for (var i=0;i<names.length;i++){ var m=MERCHANTS[names[i]]; byKey[m.key]=m; var opt=document.createElement('option'); opt.value=m.key; opt.textContent=names[i]; select.appendChild(opt); }
     select.addEventListener('change', function(e){ renderMerchant(byKey, e.target.value); });
-    document.getElementById('underdeskToggle').addEventListener('change', function(e){
-      document.getElementById('paper').classList.toggle('hide-gray', !e.target.checked);
-      renderMerchant(byKey, select.value);
-    });
+    document.getElementById('underdeskToggle').addEventListener('change', function(e){ document.getElementById('paper').classList.toggle('hide-gray', !e.target.checked); renderMerchant(byKey, select.value); });
 
     var firstKey = byKey['stonehillinn'] ? 'stonehillinn' : byKey[MERCHANTS[names[0]].key].key;
-    select.value = firstKey;
-    renderMerchant(byKey, firstKey);
-    logDebug("");
-  }
+    select.value = firstKey; renderMerchant(byKey, firstKey);
+  }).catch(function(err){
+    document.getElementById('menuTitle').textContent = 'Load failed';
+    document.getElementById('menu').textContent = 'Could not load data from GViz or CSV. Check: 1) Sheet sharing “Anyone with the link: Viewer”. 2) Tab name "'+TAB+'". 3) Publish-to-web gid='+PUB_GID+' points to the right tab.';
+  });
 })();
 </script>
 </body>
