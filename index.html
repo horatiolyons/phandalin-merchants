@@ -201,7 +201,6 @@
     const $ = (sel, el=document) => el.querySelector(sel);
     const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 
-    // Normalize strings for keys/slugs (strip punctuation variants)
     function slugify(s){
       return (s||"").toString()
         .normalize("NFKD")
@@ -212,7 +211,7 @@
         .toLowerCase();
     }
 
-    // CSV parser that handles quotes/commas/newlines
+    // Lightweight CSV parser (handles quotes/commas/newlines)
     function parseCSV(text){
       const rows = [];
       let i=0, field="", row=[], inQuotes=false;
@@ -236,7 +235,6 @@
         }
         i++;
       }
-      // last field/row
       if(field.length>0 || row.length>0){ pushField(); pushRow(); }
       return rows;
     }
@@ -273,7 +271,8 @@
 
       RAW = body
         .filter(r => r.length && r.some(cell => cell && cell.trim()!=="")) // skip empties
-        .map(r => ({
+        .map((r, i) => ({
+          __i: i, // original CSV order for stable tie-breaks
           sort: Number(r[idx["sort"]] ?? ""),
           merchant: (r[idx["merchant"]] ?? "").trim(),
           section: (r[idx["section"]] ?? "").trim(),
@@ -284,7 +283,6 @@
           is_btc: toBool(r[idx["is_btc"]])
         }));
 
-      // Collect merchants
       const set = new Set(RAW.map(r => r.merchant).filter(Boolean));
       MERCHANTS = Array.from(set);
 
@@ -302,7 +300,6 @@
       paperInner: $("#paperInner")
     };
 
-    // per-merchant unlock persisted
     function getBtcState(){
       try{ return JSON.parse(localStorage.getItem("btcUnlocked") || "{}"); }
       catch{ return {}; }
@@ -315,16 +312,14 @@
       return els.merchant.value;
     }
     function merchantSlugToName(slug){
-      // find by slug in known merchants
       const match = MERCHANTS.find(m => slugify(m)===slug);
-      return match || slug; // fallback
+      return match || slug;
     }
 
     // =========================
     // UI INIT
     // =========================
     function initUI(){
-      // Populate merchant <select> in fixed order, then extras
       const fixed = FIXED_ORDER.filter(n => MERCHANTS.includes(n));
       const extras = MERCHANTS.filter(m => !fixed.includes(m)).sort((a,b)=>a.localeCompare(b));
       const order = [...fixed, ...extras];
@@ -334,19 +329,15 @@
         return `<option value="${val}">${name}</option>`;
       }).join("");
 
-      // Restore selection from hash/localStorage or default to first fixed
       const hashParams = new URLSearchParams(location.hash.slice(1));
       const desired = hashParams.get("merchant");
       const defaultSlug = slugify(order[0] || "");
       els.merchant.value = desired && order.some(n=>slugify(n)===desired) ? desired : defaultSlug;
 
-      // BTC checkbox state (per-merchant)
       const btcAll = getBtcState();
       els.btc.checked = !!btcAll[currentMerchant()];
 
-      // Events
       els.merchant.addEventListener("change", ()=>{
-        // update BTC checkbox for this merchant
         const btc = getBtcState();
         els.btc.checked = !!btc[currentMerchant()];
         updateHash();
@@ -360,7 +351,6 @@
         render();
       });
 
-      // initialize hash for deep-linking
       updateHash();
     }
 
@@ -386,47 +376,61 @@
       // Filter rows for this merchant, respecting BTC
       const rows = RAW.filter(r => slugify(r.merchant)===merchSlug && (showBTC || !r.is_btc));
 
-      // Group by section
-      const bySection = new Map();
-      for(const r of rows){
-        const sec = r.section || "";
-        if(!bySection.has(sec)) bySection.set(sec, []);
-        bySection.get(sec).push(r);
+      // Group rows by section, tracking earliest CSV appearance for tie-breaks
+      const sectionMap = new Map();
+      for (const r of rows) {
+        const name = r.section || "";
+        let s = sectionMap.get(name);
+        if (!s) {
+          s = { name, items: [], firstIndex: r.__i };
+          sectionMap.set(name, s);
+        }
+        s.items.push(r);
+        if (r.__i < s.firstIndex) s.firstIndex = r.__i;
       }
 
-      // Sort each section: sort asc (numbers first), then item A→Z
-      for(const [k, arr] of bySection){
-        arr.sort((a,b)=>{
+      // Sort items within each section; compute a section sort key
+      const sections = [];
+      for (const s of sectionMap.values()) {
+        s.items.sort((a, b) => {
           const sa = Number.isFinite(a.sort) ? a.sort : Infinity;
           const sb = Number.isFinite(b.sort) ? b.sort : Infinity;
-          if(sa !== sb) return sa - sb;
+          if (sa !== sb) return sa - sb;
           return a.item.localeCompare(b.item);
         });
-        // If a section is empty (shouldn't be, but guard), delete it
-        if(arr.length===0) bySection.delete(k);
+
+        if (!s.items.length) continue;
+
+        // Section key: the first (lowest) item's numeric sort if available; else Infinity
+        const firstWithSort = s.items.find(x => Number.isFinite(x.sort));
+        s.key = Number.isFinite(firstWithSort?.sort) ? firstWithSort.sort : Infinity;
+
+        sections.push(s);
       }
+
+      // Order sections by key, then earliest CSV position, then name
+      sections.sort((a, b) => {
+        if (a.key !== b.key) return a.key - b.key;
+        if (a.name && !b.name) return -1;
+        if (!a.name && b.name) return 1;
+        const idx = a.firstIndex - b.firstIndex;
+        if (idx) return idx;
+        return a.name.localeCompare(b.name);
+      });
 
       // Build HTML
       let out = "";
       out += `<h2>${merchName}</h2>`;
 
-      // Sections in natural order of appearance in data (stable) with a simple tie-break by name
-      const orderedSections = Array.from(bySection.keys()).sort((a,b)=>{
-        // keep empty-name sections (if any) last
-        if(!a && b) return 1;
-        if(!b && a) return -1;
-        return a.localeCompare(b);
-      });
-
-      for(const secName of orderedSections){
-        const items = bySection.get(secName);
-        if(!items || items.length===0) continue; // hide empty sections
+      for (const sec of sections) {
+        const items = sec.items;
+        if (!items || !items.length) continue; // hide empty
 
         out += `<section class="section">`;
-        if(secName){ out += `<h3>${secName}</h3>`; }
+        if (sec.name) out += `<h3>${sec.name}</h3>`;
 
         out += `<ul class="items">`;
-        for(const row of items){
+        for (const row of items){
           const price = row.price_text ? nb(row.price_text) : fmtPriceCp(row.price_cp);
           out += `
             <li class="item" aria-label="${row.item}">
@@ -441,7 +445,7 @@
         out += `</ul></section>`;
       }
 
-      // Footer (optional – blank by default; easy to wire later)
+      // Footer (optional – blank by default)
       out += `<div class="footer">
                 <div class="footLeft"></div>
                 <div class="footRight"></div>
