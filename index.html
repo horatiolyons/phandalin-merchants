@@ -67,6 +67,7 @@
       overflow:hidden;
     }
     .paper::before{
+      /* top edge glow */
       content:""; position:absolute; inset:0;
       background:
         radial-gradient(120% 40% at 50% -10%, var(--paper-edge), transparent 60%),
@@ -129,19 +130,15 @@
       padding-left:.7rem;
     }
 
-    /* === Below-the-counter visual identifiers (1,2,3 in combination) === */
-    /* 1) Dagger mark (†) before the item name */
-    .item.btc .name span::before{
-      content:"\2020\u00A0"; /* † + nbsp */
-      color:var(--quiet);
-    }
-    /* 2) Left hairline rule + indent */
+    /* BTC styling: ledger margin + quiet tint */
     .item.btc{
       border-left:2px solid var(--rule);
       padding-left:.55rem;
     }
-    /* 3) Quiet tint on the item name (price remains normal) */
-    .item.btc .name{ color:var(--quiet); }
+    .item.btc .name,
+    .item.btc .desc{
+      color: var(--quiet);
+    }
 
     /* Footer (optional notes) */
     .footer{
@@ -152,8 +149,6 @@
     .footRight{text-align:right; flex:1}
 
     /* Accessibility helpers */
-    .sr-only{position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;}
-
     a.skip{position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;}
     a.skip:focus{position:static; width:auto; height:auto; background:#fff; color:#000; padding:.25rem .5rem;}
 
@@ -452,7 +447,6 @@
           out += `
             <li class="item${btcClass}"${aria}>
               <div class="line name">
-                ${row.is_btc ? `<span class="sr-only">Below counter: </span>` : ``}
                 <span>${row.item}</span>
                 <span class="dots" aria-hidden="true"></span>
               </div>
@@ -463,8 +457,8 @@
         out += `</ul></section>`;
       }
 
-      // Footer (legend only when BTC is shown)
-      const legend = showBTC ? `\u2020 marks below\u2011counter items.` : ``; /* \u2011 = non-breaking hyphen */
+      // Footer legend appears only when BTC is visible
+      const legend = showBTC ? `Ledger-marked items are available <em>below the counter</em>.` : ``;
       out += `<div class="footer">
                 <div class="footLeft">${legend}</div>
                 <div class="footRight"></div>
