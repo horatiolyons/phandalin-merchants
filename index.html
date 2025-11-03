@@ -148,6 +148,9 @@
     a.skip{position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;}
     a.skip:focus{position:static; width:auto; height:auto; background:#fff; color:#000; padding:.25rem .5rem;}
 
+    /* Ensure hidden attribute fully hides in all browsers */
+    #btcWrap[hidden]{ display:none !important; }
+
     /* Print */
     @media print{
       nav.controls{display:none !important;}
@@ -166,7 +169,9 @@
         <!-- populated by JS in fixed order, falling back to dataset -->
       </select>
       <div class="spacer"></div>
-      <label><input type="checkbox" id="btcToggle" /> Show below counter</label>
+      <span id="btcWrap">
+        <label><input type="checkbox" id="btcToggle" /> Show below counter</label>
+      </span>
     </div>
   </nav>
 
@@ -261,8 +266,9 @@
     // =========================
     // DATA FETCH & PREP
     // =========================
-    let RAW = [];  // array of row objects
-    let MERCHANTS = []; // discovered set
+    let RAW = [];         // all rows
+    let MERCHANTS = [];   // discovered merchant names
+    let HAS_BTC = {};     // slug -> boolean
 
     async function loadData(){
       const res = await fetch(CSV_URL, {cache:"no-store"});
@@ -292,6 +298,14 @@
       const set = new Set(RAW.map(r => r.merchant).filter(Boolean));
       MERCHANTS = Array.from(set);
 
+      // Build merchant -> hasBTC map
+      HAS_BTC = {};
+      for(const r of RAW){
+        if(r.is_btc && r.merchant){
+          HAS_BTC[slugify(r.merchant)] = true;
+        }
+      }
+
       initUI();
       render();
     }
@@ -302,6 +316,7 @@
     const els = {
       merchant: $("#merchant"),
       btc: $("#btcToggle"),
+      btcWrap: $("#btcWrap"),
       paper: $("#paper"),
       paperInner: $("#paperInner")
     };
@@ -314,13 +329,12 @@
       localStorage.setItem("btcUnlocked", JSON.stringify(obj||{}));
     }
 
-    function currentMerchant(){
-      return els.merchant.value;
-    }
+    function currentMerchant(){ return els.merchant.value; }
     function merchantSlugToName(slug){
       const match = MERCHANTS.find(m => slugify(m)===slug);
       return match || slug;
     }
+    function merchantHasBTC(slug){ return !!HAS_BTC[slug]; }
 
     // =========================
     // UI INIT
@@ -340,19 +354,25 @@
       const defaultSlug = slugify(order[0] || "");
       els.merchant.value = desired && order.some(n=>slugify(n)===desired) ? desired : defaultSlug;
 
-      const btcAll = getBtcState();
-      els.btc.checked = !!btcAll[currentMerchant()];
+      // Apply BTC toggle visibility/state based on current merchant
+      applyBtcVisibility();
 
       els.merchant.addEventListener("change", ()=>{
-        const btc = getBtcState();
-        els.btc.checked = !!btc[currentMerchant()];
-        updateHash();
+        applyBtcVisibility();
         render();
       });
+
       els.btc.addEventListener("change", ()=>{
-        const btc = getBtcState();
-        btc[currentMerchant()] = els.btc.checked;
-        setBtcState(btc);
+        const slug = currentMerchant();
+        const has = merchantHasBTC(slug);
+        if(has){
+          const btc = getBtcState();
+          btc[slug] = els.btc.checked;
+          setBtcState(btc);
+        }else{
+          // If somehow toggled when not available, force off
+          els.btc.checked = false;
+        }
         updateHash();
         render();
       });
@@ -360,10 +380,28 @@
       updateHash();
     }
 
+    function applyBtcVisibility(){
+      const slug = currentMerchant();
+      const has = merchantHasBTC(slug);
+
+      if(!has){
+        // Hide and force OFF
+        els.btc.checked = false;
+        els.btcWrap.hidden = true;
+      }else{
+        els.btcWrap.hidden = false;
+        // Restore per-merchant state
+        const btcAll = getBtcState();
+        els.btc.checked = !!btcAll[slug];
+      }
+      updateHash();
+    }
+
     function updateHash(){
       const params = new URLSearchParams();
-      params.set("merchant", currentMerchant());
-      if(els.btc.checked) params.set("btc","1");
+      const slug = currentMerchant();
+      params.set("merchant", slug);
+      if(els.btc.checked && merchantHasBTC(slug)) params.set("btc","1");
       location.hash = params.toString();
     }
 
@@ -373,7 +411,7 @@
     function render(){
       const merchSlug = currentMerchant();
       const merchName = merchantSlugToName(merchSlug);
-      const showBTC = els.btc.checked;
+      const showBTC = els.btc.checked && merchantHasBTC(merchSlug);
 
       // Skin
       const skinClass = MERCHANT_SKIN[merchSlug] || "skin-parchment";
