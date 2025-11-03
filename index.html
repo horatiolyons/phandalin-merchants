@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Phandalin Merchants</title>
 <style>
-  :root{--w:900px;--ink:#2b211b;--quiet:#6b5b53;--acc:#7a5b3a;--bg:#efe7d5;--edge:#d8c8a9;--rule:rgba(0,0,0,.08);--gink:#6b6b6b;--font:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif}
+  :root{--w:900px;--ink:#2b211b;--quiet:#6b5b53;--acc:#7a5b3a;--bg:#efe7d5;--edge:#d8c8a9;--rule:rgba(0,0,0,.08);--font:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif}
   body{margin:0;background:#1a1a1a;color:var(--ink);font-family:var(--font);line-height:1.35}
   .skin-notice{--bg:#fbf7ed;--edge:#e8dcc1;--acc:#744210}
   .controls{position:sticky;top:0;z-index:5;display:flex;gap:1rem;align-items:center;padding:.7rem 1rem;color:#eee;background:#111;border-bottom:1px solid #222}
@@ -48,56 +48,69 @@
 
 <script>
 /* ====== CONFIG ====== */
-const SHEET_ID = "1sKVmkiC_8wpenEXb_692htiNgHv9e0Vz_FLEx4ttqGc";
-const TAB      = "main"; // your tab name
-const DEBUG    = location.search.includes('debug');
+var SHEET_ID = "1sKVmkiC_8wpenEXb_692htiNgHv9e0Vz_FLEx4ttqGc";
+var TAB      = "main";           // your tab name (lowercase as you set it)
+var DEBUG    = location.search.indexOf('debug=1') !== -1;
 
-/* ====== Fetch rows via GViz JSON ====== */
-const gvizUrl = (tab) =>
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tab)}&t=${Date.now()}`;
-
-// canonicalise header names → lowercase, strip punctuation, spaces→underscores
+/* ====== GViz fetch (no dotAll flag) ====== */
+function gvizUrl(tab){
+  return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:json&sheet="+encodeURIComponent(tab)+"&t="+Date.now();
+}
 function canon(s){
   return String(s||'')
     .toLowerCase()
     .replace(/\s+/g,' ')
-    .trim()
-    .replace(/[^\w ]+/g,'')   // drop punctuation like ?!’”
-    .replace(/\s+/g,'_');     // spaces -> underscores
+    .replace(/^\s+|\s+$/g,'')
+    .replace(/[^\w ]+/g,'')
+    .replace(/\s+/g,'_');
+}
+function fetchGViz(tab){
+  return fetch(gvizUrl(tab), {cache:'no-store'})
+    .then(function(r){ return r.text(); })
+    .then(function(text){
+      // Match across newlines without /s by using [\s\S]*
+      var m = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);\s*$/);
+      if(!m){ throw new Error("GViz response not recognised; check sharing (Viewer) and tab name."); }
+      var json = JSON.parse(m[1]);
+      var cols = json.table.cols.map(function(c){ return c.label || c.id; });
+      var keys = cols.map(canon);
+      if (DEBUG) console.log("GViz columns:", cols, "→", keys);
+      return json.table.rows.map(function(r){
+        var row = {};
+        for(var i=0;i<keys.length;i++){
+          var cell = r.c[i];
+          row[keys[i]] = (cell && cell.v!=null) ? cell.v : "";
+        }
+        return row;
+      });
+    });
 }
 
-async function fetchGViz(tab){
-  const text = await fetch(gvizUrl(tab), {cache:'no-store'}).then(r=>r.text());
-  const m = text.match(/google\.visualization\.Query\.setResponse\((.*)\);\s*$/s);
-  if(!m) throw new Error("GViz response not recognised; check sharing (Viewer) and tab name.");
-  const json = JSON.parse(m[1]);
-  const cols = json.table.cols.map(c => c.label || c.id);
-  const keys = cols.map(canon);
-  if (DEBUG) console.log("GViz columns:", cols, "→", keys);
-  return json.table.rows.map(r => {
-    const row = {};
-    keys.forEach((k,i) => row[k] = (r.c[i] && r.c[i].v != null) ? r.c[i].v : "");
-    return row;
-  });
+/* ====== Helpers (no ??) ====== */
+function toInt(v){
+  var s = String(v==null?"":v).trim();
+  if(!s) return null;
+  var n = parseInt(s,10);
+  return isFinite(n) ? n : null;
 }
-
-/* ====== Helpers ====== */
-const toInt = v => {
-  const s = String(v ?? "").trim();
-  if (!s) return null;
-  const n = parseInt(s, 10);
-  return Number.isFinite(n) ? n : null;
-};
-const toBool = v => /^(true|yes|y|1)$/i.test(String(v ?? "").trim());
-const fmtCp = cp => cp==null ? "" : (cp%100===0? (cp/100)+"\u00A0gp" : cp%10===0? (cp/10)+"\u00A0sp" : cp+"\u00A0cp");
+function toBool(v){
+  return /^(true|yes|y|1)$/i.test(String(v==null?"":v).trim());
+}
+function fmtCp(cp){
+  if (cp==null) return "";
+  if (cp%100===0) return (cp/100)+"\u00A0gp";
+  if (cp%10===0)  return (cp/10)+"\u00A0sp";
+  return cp+"\u00A0cp";
+}
 
 /* ====== Build merchants from rows ====== */
 function buildMerchants(rows){
-  const M = {};
-  for (const r of rows){
-    const merchant = String(r.merchant ?? "").trim();
-    const category = String(r.category ?? "General").trim();
-    const item     = String(r.item ?? "").trim();
+  var M = {};
+  for (var i=0;i<rows.length;i++){
+    var r = rows[i];
+    var merchant = String(r.merchant||"").trim();
+    var category = String(r.category||"General").trim();
+    var item     = String(r.item||"").trim();
     if (!merchant || !item) continue;
 
     if (!M[merchant]){
@@ -105,23 +118,27 @@ function buildMerchants(rows){
         key: merchant.toLowerCase().replace(/[^a-z0-9]+/g,''),
         title: merchant,
         subtitle: "",
-        allowDescs: !/stonehill/i.test(merchant), // Stonehill hides descriptions
+        allowDescs: !/stonehill/i.test(merchant),
         footLeft: "", footRight: "",
         sections: []
       };
     }
-    let sec = M[merchant].sections.find(s => s.title === category);
+    var sec = null;
+    for (var j=0;j<M[merchant].sections.length;j++){
+      if (M[merchant].sections[j].title === category){ sec = M[merchant].sections[j]; break; }
+    }
     if(!sec){ sec = { title: category, items: [] }; M[merchant].sections.push(sec); }
 
-    const priceText = String(r.pricetext ?? "").trim() || undefined;
-    const cp        = priceText ? undefined : toInt(r.pricecp);
-    const gray      = toBool(r.under_the_desk); // from “Under the desk?” (canonicalised)
+    var priceText = String(r.pricetext||"").trim();
+    if (!priceText) priceText = undefined;
+    var cp        = priceText ? undefined : toInt(r.pricecp);
+    var gray      = toBool(r.under_the_desk); // from “Under the desk?”
 
     sec.items.push({
       name: item,
-      desc: String(r.description ?? "").trim() || undefined,
-      cp, priceText,
-      gray,
+      desc: (String(r.description||"").trim() || undefined),
+      cp: cp, priceText: priceText,
+      gray: gray,
       forceDesc: false
     });
   }
@@ -135,9 +152,9 @@ function setSkin(el, merchantName){
   if (/miner/i.test(merchantName)) el.classList.add('skin-notice'); // noticeboard for Miner’s Exchange
 }
 function renderMerchant(M, key){
-  const m = M[key];
-  const paper = document.getElementById('paper');
-  const menu  = document.getElementById('menu');
+  var m = M[key];
+  var paper = document.getElementById('paper');
+  var menu  = document.getElementById('menu');
 
   setSkin(paper, m.title);
   document.getElementById('menuTitle').textContent = m.title;
@@ -145,34 +162,41 @@ function renderMerchant(M, key){
   document.getElementById('footLeft').textContent = m.footLeft || "";
   document.getElementById('footRight').textContent = m.footRight || "";
 
-  const hideGray = paper.classList.contains('hide-gray');
+  var hideGray = paper.classList.contains('hide-gray');
   menu.innerHTML = '';
 
-  for (const sec of m.sections){
-    const items = Array.isArray(sec.items) ? sec.items : [];
-    const visible = hideGray ? items.filter(i => !i.gray) : items;
-    if (visible.length === 0) continue; // hides all-gray sections until toggle
+  for (var si=0; si<m.sections.length; si++){
+    var sec = m.sections[si];
+    var items = sec.items || [];
+    var visible = [];
+    for (var k=0;k<items.length;k++){
+      if (!hideGray || !items[k].gray) visible.push(items[k]);
+    }
+    if (visible.length === 0) continue;
 
-    const wrap = document.createElement('section');
+    var wrap = document.createElement('section');
     wrap.className = 'section';
-    const h2 = document.createElement('h2'); h2.textContent = sec.title;
+    var h2 = document.createElement('h2'); h2.textContent = sec.title;
     wrap.appendChild(h2);
 
-    const list = document.createElement('div'); list.className = 'items';
+    var list = document.createElement('div');
+    list.className = 'items';
 
-    for (const it of visible){
-      const line = document.createElement('div'); line.className = 'line';
+    for (var t=0;t<visible.length;t++){
+      var it = visible[t];
+      var line = document.createElement('div');
+      line.className = 'line';
       if (it.gray) line.dataset.gray = "1";
 
-      const nm = document.createElement('span'); nm.className='name'; nm.textContent = it.name;
-      const dots = document.createElement('span'); dots.className='dots';
-      const pr = document.createElement('span'); pr.className='price';
-      pr.textContent = it.priceText ?? fmtCp(it.cp);
+      var nm = document.createElement('span'); nm.className='name'; nm.textContent = it.name;
+      var dots = document.createElement('span'); dots.className='dots';
+      var pr = document.createElement('span'); pr.className='price';
+      pr.textContent = it.priceText ? it.priceText : fmtCp(it.cp);
 
-      line.append(nm,dots,pr);
+      line.appendChild(nm); line.appendChild(dots); line.appendChild(pr);
 
       if (it.desc && (m.allowDescs || it.forceDesc)){
-        const d = document.createElement('div'); d.className='desc'; d.textContent = it.desc;
+        var d = document.createElement('div'); d.className='desc'; d.textContent = it.desc;
         line.appendChild(d);
       }
       list.appendChild(line);
@@ -183,43 +207,45 @@ function renderMerchant(M, key){
 }
 
 /* ====== Boot ====== */
-(async function boot(){
-  try {
-    const rows = await fetchGViz(TAB);
-    const MERCHANTS = buildMerchants(rows);
-
-    const names = Object.keys(MERCHANTS);
+(function boot(){
+  fetchGViz(TAB).then(function(rows){
+    var MERCHANTS = buildMerchants(rows);
+    var names = Object.keys(MERCHANTS);
     if (names.length === 0) throw new Error("No rows parsed – check headers/values in the sheet.");
 
-    // Fill dropdown
-    const select = document.getElementById('merchantSelect');
-    names.sort((a,b)=> (/stonehill/i.test(a)?-1:0) - (/stonehill/i.test(b)?-1:0) || a.localeCompare(b));
-    const byKey = {};
-    for (const name of names){
-      const m = MERCHANTS[name];
+    var select = document.getElementById('merchantSelect');
+    names.sort(function(a,b){
+      var sa = /stonehill/i.test(a) ? -1 : 0;
+      var sb = /stonehill/i.test(b) ? -1 : 0;
+      return (sa - sb) || a.localeCompare(b);
+    });
+
+    var byKey = {};
+    for (var i=0;i<names.length;i++){
+      var m = MERCHANTS[names[i]];
       byKey[m.key] = m;
-      const opt = document.createElement('option'); opt.value = m.key; opt.textContent = name;
+      var opt = document.createElement('option');
+      opt.value = m.key; opt.textContent = names[i];
       select.appendChild(opt);
     }
 
-    // Handlers
-    select.addEventListener('change', e => renderMerchant(byKey, e.target.value));
-    document.getElementById('underdeskToggle').addEventListener('change', e => {
+    select.addEventListener('change', function(e){ renderMerchant(byKey, e.target.value); });
+    document.getElementById('underdeskToggle').addEventListener('change', function(e){
       document.getElementById('paper').classList.toggle('hide-gray', !e.target.checked);
       renderMerchant(byKey, select.value);
     });
 
-    // First render
-    const firstKey = byKey['stonehillinn'] ? 'stonehillinn' : Object.values(byKey)[0].key;
+    var firstKey = byKey['stonehillinn'] ? 'stonehillinn' : byKey[MERCHANTS[names[0]].key].key;
     select.value = firstKey;
     renderMerchant(byKey, firstKey);
-  } catch (err){
+  }).catch(function(err){
     console.error(err);
+    document.getElementById('menuTitle').textContent = 'Load failed';
     document.getElementById('menu').textContent =
       'Could not load data. Add “?debug=1” to the URL and open the console for details. ' +
-      'Common fixes: Share sheet as “Anyone with the link: Viewer”, verify tab name “‘+TAB+'”, '+
+      'Fixes: Share sheet as “Anyone with the link: Viewer”, verify tab name “‘+TAB+'”, '+
       'and ensure rows have Merchant, Item, and a PriceCp or PriceText.';
-  }
+  });
 })();
 </script>
 </body>
