@@ -45,15 +45,22 @@
     }
     .paper .pad{padding:1.4rem 1.2rem;}
 
-    /* Header row with crest */
+    /* Header row with crest + subtitle */
     .head{ display:flex; align-items:center; gap:.75rem; margin:0 0 .25rem 0; }
-    .head h2{ flex:1; margin:.2rem 0 .2rem 0; font-size:1.8rem; color:var(--accent); }
+    .title{ flex:1; min-width:0; }
+    .title h2{ margin:.2rem 0 .15rem 0; font-size:1.8rem; color:var(--accent); }
+    .subtitle{
+      color:var(--quiet); font-size:1rem; letter-spacing:.02em;
+      margin:0 0 .05rem 0;
+    }
     .crest[hidden]{ display:none !important; }
     .crest{ width:72px; height:72px; flex:0 0 auto; }
     .crest img{ display:block; width:100%; height:100%; object-fit:contain; }
 
     @media (max-width: 640px){
       .crest{ width:52px; height:52px; }
+      .title h2{ font-size:1.6rem; }
+      .subtitle{ font-size:.98rem; }
     }
 
     h3{
@@ -116,7 +123,7 @@
       nav.controls{display:none !important;}
       body{background:var(--paper);}
       .paper{box-shadow:none;}
-      .crest{ opacity:.9; } /* soften painted marks on paper */
+      .crest{ opacity:.9; }
     }
   </style>
 </head>
@@ -183,6 +190,7 @@
     // UTILITIES
     // =========================
     const $ = (s,el=document)=>el.querySelector(s);
+
     function slugify(s){
       return (s||"").toString()
         .normalize("NFKD")
@@ -234,6 +242,8 @@
           __i:i,
           sort:Number(r[idx["sort"]]??""),
           merchant:(r[idx["merchant"]]??"").trim(),
+          subtitle:(r[idx["subtitle"]]??"").trim(),               // NEW
+          subtitle_btc:(r[idx["subtitle_btc"]]??"").trim(),       // optional
           section:(r[idx["section"]]??"").trim(),
           item:(r[idx["item"]]??"").trim(),
           description:(r[idx["description"]]??"").trim(),
@@ -372,35 +382,48 @@
         im.src = src;
       });
     }
-
     async function setCrest(merchSlug, showBTC){
-      // build candidate list based on BTC visibility
       const base = `assets/icons/${merchSlug}`;
       const candidates = [];
       if(showBTC) candidates.push(`${base}-btc.webp`);
       candidates.push(`${base}.webp`);
-
-      // attempt in order, first that loads wins
       let chosen = null;
       for(const c of candidates){
-        // cache-buster optional: append ?v= to force refresh when you update assets
         const hit = await tryLoad(c);
         if(hit){ chosen = hit; break; }
       }
-
-      // mount or hide
       const crest = document.getElementById("crest");
       const img = document.getElementById("crestImg");
       if(!crest || !img) return;
-
       if(chosen){
         img.src = chosen;
-        img.alt = ""; // decorative; keep empty
+        img.alt = "";
         crest.hidden = false;
       }else{
-        crest.hidden = true; // no crest shown
+        crest.hidden = true;
         img.removeAttribute("src");
       }
+    }
+
+    // =========================
+    // SUBTITLE PICKER
+    // =========================
+    function getSubtitle(slug, showBTC){
+      const rows = RAW.filter(r => slugify(r.merchant)===slug);
+      if(!rows.length) return "";
+      // sort by 'sort' asc (missing = Infinity), then by input order
+      rows.sort((a,b)=>{
+        const sa=Number.isFinite(a.sort)?a.sort:Infinity;
+        const sb=Number.isFinite(b.sort)?b.sort:Infinity;
+        if(sa!==sb) return sa-sb;
+        return a.__i - b.__i;
+      });
+      if(showBTC){
+        const btc = rows.find(r => r.subtitle_btc);
+        if(btc && btc.subtitle_btc) return btc.subtitle_btc;
+      }
+      const base = rows.find(r => r.subtitle);
+      return base ? base.subtitle : "";
     }
 
     // =========================
@@ -447,10 +470,15 @@
         return a.name.localeCompare(b.name);
       });
 
-      // Header with crest slot
+      const subtitle = getSubtitle(merchSlug, showBTC);
+
+      // Header with crest + subtitle
       let out = `
         <div class="head">
-          <h2>${merchName}</h2>
+          <div class="title">
+            <h2>${merchName}</h2>
+            ${subtitle ? `<div class="subtitle">${subtitle}</div>` : ``}
+          </div>
           <div class="crest" id="crest" hidden>
             <img id="crestImg" alt="" decoding="async">
           </div>
@@ -481,7 +509,7 @@
 
       els.paperInner.innerHTML=out;
 
-      // after DOM inject, resolve crest
+      // crest after DOM injection
       setCrest(merchSlug, showBTC);
     }
 
