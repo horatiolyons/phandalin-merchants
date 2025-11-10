@@ -6,15 +6,34 @@
   <title>Phandalin Merchants</title>
   <style>
     :root{
+      /* base tokens; skins override per-sheet */
       --ink:#2b211b; --quiet:#6b5b53; --accent:#7a5b3a;
       --paper:#efe7d5; --paper-edge:#d8c8a9; --rule: rgba(0,0,0,.08);
       --crest:#8a5a2b; --w:900px;
     }
-    .skin-parchment{ --paper:#efe7d5; --paper-edge:#d8c8a9; --accent:#7a5b3a; }
-    .skin-noticeboard{ --paper:#fbf7ed; --paper-edge:#e8dcc1; --accent:#744210; }
 
-    html,body{margin:0;padding:0;background:#e8e0cf;color:var(--ink);}
-    body{font-family:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif; line-height:1.35;}
+    /* Parchment (warm ink) */
+    .skin-parchment{
+      --paper:#efe7d5; --paper-edge:#d8c8a9;
+      --ink:#2b211b;      /* warm brown body text */
+      --quiet:#6b5b53;    /* notes/descriptions */
+      --accent:#7a5b3a;   /* headings */
+    }
+
+    /* Noticeboard (cool, blue ink) */
+    .skin-noticeboard{
+      --paper:#fbf7ed; --paper-edge:#e8dcc1;
+      --ink:#1f2b3a;      /* deep slate blue body text */
+      --quiet:#5a6b84;    /* muted steel blue for notes */
+      --accent:#2f4a75;   /* headings */
+    }
+
+    html,body{margin:0;padding:0;background:#e8e0cf;}
+    body{
+      /* keep a sensible default; actual sheet color comes from .paper { color: var(--ink) } */
+      color:#2b211b;
+      font-family:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif; line-height:1.35;
+    }
     .wrap{max-width:var(--w); margin:0 auto; padding:0 12px;}
 
     nav.controls{
@@ -35,6 +54,7 @@
       background:var(--paper); margin:0 auto; border-radius:6px;
       box-shadow: 0 12px 28px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08);
       position:relative; overflow:hidden;
+      color: var(--ink); /* << each sheet uses its skin's ink */
     }
     .paper::before{
       content:""; position:absolute; inset:0;
@@ -172,18 +192,23 @@
     // CONFIG
     // =========================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJ-jHhfMgMuQryuOFEzBmhgjvaQYeLJ2hwoaVMayEMqFVRfk5CsxZ-wA7-rdpRQ4Bl1CdUC2p0pKrR/pub?output=csv";
+
     const FIXED_ORDER = ["Stonehill Inn","Barthen’s Provisions","Hilda’s Remedies","Miner’s Exchange"];
+
     const MERCHANT_SKIN = {
       "stonehill-inn":"skin-parchment",
       "barthens-provisions":"skin-parchment",
       "hildas-remedies":"skin-parchment",
-      "miners-exchange":"skin-noticeboard"
+      "miners-exchange":"skin-noticeboard",
+      "townmasters-hall":"skin-noticeboard"  // NEW: Townmaster on noticeboard
     };
+
     const PASSPHRASE = {
       "stonehill-inn":"tankard",
       "barthens-provisions":"buddy",
       "hildas-remedies":"tincture",
-      "miners-exchange":"assay"
+      "miners-exchange":"assay",
+      "townmasters-hall":"belltower" // optional; only matters if you add BTC rows someday
     };
 
     // =========================
@@ -242,7 +267,7 @@
           __i:i,
           sort:Number(r[idx["sort"]]??""),
           merchant:(r[idx["merchant"]]??"").trim(),
-          subtitle:(r[idx["subtitle"]]??"").trim(),               // NEW
+          subtitle:(r[idx["subtitle"]]??"").trim(),               // subtitle support
           subtitle_btc:(r[idx["subtitle_btc"]]??"").trim(),       // optional
           section:(r[idx["section"]]??"").trim(),
           item:(r[idx["item"]]??"").trim(),
