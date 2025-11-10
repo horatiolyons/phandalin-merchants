@@ -29,32 +29,19 @@
       --rule: rgba(0,0,0,.10);
     }
 
-    /* Zhentarim BTC (noticeboard paper, brass accents, bistre body, subtle wine stain) */
+    /* Zhent = Noticeboard look, but wine accents + BTC names in wine */
     .skin-zhent{
-      --paper:#fbf7ed; --paper-edge:#e8dcc1; /* same paper as noticeboard */
-      --ink:#1c1510;      /* bistre body text */
-      --quiet:#5a5047;    /* ashy brown-grey */
-      --accent:#8a6b2b;   /* brass/old gold headings */
-      --rule: rgba(0,0,0,.12);
+      --paper:#fbf7ed;    /* same as noticeboard */
+      --paper-edge:#e8dcc1;
+      --ink:#1f2b3a;      /* same body ink as noticeboard */
+      --quiet:#5a6b84;    /* same quiet as noticeboard */
+      --accent:#6E2826;   /* wine accents */
+      --rule: rgba(0,0,0,.10);
     }
-    /* Decorative old-wine blot, left/low to avoid crest */
-    .paper.skin-zhent::after{
-      content:"";
-      position:absolute;
-      left:1.1rem;             /* LHS */
-      top:3.6rem;              /* down from top to avoid crest */
-      width:168px; height:168px;
-      pointer-events:none;
-      mix-blend-mode:multiply;
-      opacity:.33;
-      background:
-        radial-gradient(80px 64px at 35% 42%, rgba(118,40,38,.35), transparent 60%),
-        radial-gradient(46px 38px at 58% 55%, rgba(118,40,38,.28), transparent 62%),
-        radial-gradient(22px 20px at 22% 78%, rgba(118,40,38,.32), transparent 70%),
-        radial-gradient(10px 10px at 18% 92%, rgba(118,40,38,.28), transparent 72%);
-    }
-    /* Slightly stronger ledger margin in Zhent view */
-    .skin-zhent .item.btc{ border-left-color: rgba(0,0,0,.18); }
+    /* Subtitle becomes wine in zhent */
+    .skin-zhent .subtitle{ color: var(--accent); }
+    /* BTC item names (left side) become wine in zhent; prices stay ink */
+    .skin-zhent .item.btc .name{ color: var(--accent); }
 
     html,body{margin:0;padding:0;background:#e8e0cf;}
     body{
@@ -170,7 +157,6 @@
       nav.controls{display:none !important;}
       body{background:var(--paper);}
       .paper{box-shadow:none;}
-      .paper.skin-zhent::after{ display:none; } /* hide stain on print */
       .crest{ opacity:.9; }
     }
   </style>
