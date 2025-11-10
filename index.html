@@ -6,7 +6,6 @@
   <title>Phandalin Merchants</title>
   <style>
     :root{
-      /* base tokens; skins override per-sheet */
       --ink:#2b211b; --quiet:#6b5b53; --accent:#7a5b3a;
       --paper:#efe7d5; --paper-edge:#d8c8a9; --rule: rgba(0,0,0,.08);
       --crest:#8a5a2b; --w:900px;
@@ -30,8 +29,7 @@
 
     html,body{margin:0;padding:0;background:#e8e0cf;}
     body{
-      /* keep a sensible default; actual sheet color comes from .paper { color: var(--ink) } */
-      color:#2b211b;
+      color:#2b211b; /* default; each sheet overrides via .paper { color: var(--ink) } */
       font-family:'Iowan Old Style','Palatino Linotype','Book Antiqua',Palatino,serif; line-height:1.35;
     }
     .wrap{max-width:var(--w); margin:0 auto; padding:0 12px;}
@@ -54,7 +52,7 @@
       background:var(--paper); margin:0 auto; border-radius:6px;
       box-shadow: 0 12px 28px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08);
       position:relative; overflow:hidden;
-      color: var(--ink); /* << each sheet uses its skin's ink */
+      color: var(--ink); /* each sheet uses its skin's ink */
     }
     .paper::before{
       content:""; position:absolute; inset:0;
@@ -193,14 +191,13 @@
     // =========================
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJ-jHhfMgMuQryuOFEzBmhgjvaQYeLJ2hwoaVMayEMqFVRfk5CsxZ-wA7-rdpRQ4Bl1CdUC2p0pKrR/pub?output=csv";
 
-    const FIXED_ORDER = ["Stonehill Inn","Barthen’s Provisions","Hilda’s Remedies","Miner’s Exchange"];
-
+    // Fallback skin map (used only if no skin provided in the sheet)
     const MERCHANT_SKIN = {
       "stonehill-inn":"skin-parchment",
       "barthens-provisions":"skin-parchment",
       "hildas-remedies":"skin-parchment",
       "miners-exchange":"skin-noticeboard",
-      "townmasters-hall":"skin-noticeboard"  // NEW: Townmaster on noticeboard
+      "townmasters-hall":"skin-noticeboard"
     };
 
     const PASSPHRASE = {
@@ -208,7 +205,7 @@
       "barthens-provisions":"buddy",
       "hildas-remedies":"tincture",
       "miners-exchange":"assay",
-      "townmasters-hall":"belltower" // optional; only matters if you add BTC rows someday
+      "townmasters-hall":"belltower"
     };
 
     // =========================
@@ -226,6 +223,7 @@
         .replace(/^-+|-+$/g,"")
         .toLowerCase();
     }
+
     function parseCSV(text){
       const rows=[]; let i=0,f="",row=[],q=false;
       const pushF=()=>{row.push(f);f="";}; const pushR=()=>{rows.push(row);row=[];};
@@ -237,6 +235,7 @@
       if(f.length>0||row.length>0){pushF();pushR();}
       return rows;
     }
+
     const toBool = v => (v||"").toString().trim().toUpperCase()==="TRUE";
     function fmtPriceCp(cp){
       if(cp==null||cp==="") return "—";
@@ -251,7 +250,9 @@
     // =========================
     // DATA
     // =========================
-    let RAW=[], MERCHANTS=[], HAS_BTC={};
+    let RAW=[];                 // all rows
+    let HAS_BTC={};             // slug -> boolean
+    let MERCHANT_LIST=[];       // [{slug,name,key,firstIndex}]
 
     async function loadData(){
       const res=await fetch(CSV_URL,{cache:"no-store"});
@@ -267,8 +268,10 @@
           __i:i,
           sort:Number(r[idx["sort"]]??""),
           merchant:(r[idx["merchant"]]??"").trim(),
-          subtitle:(r[idx["subtitle"]]??"").trim(),               // subtitle support
-          subtitle_btc:(r[idx["subtitle_btc"]]??"").trim(),       // optional
+          subtitle:(r[idx["subtitle"]]??"").trim(),
+          subtitle_btc:(r[idx["subtitle_btc"]]??"").trim(),
+          skin:(r[idx["skin"]]??"").trim(),            // NEW
+          skin_btc:(r[idx["skin_btc"]]??"").trim(),    // NEW (optional)
           section:(r[idx["section"]]??"").trim(),
           item:(r[idx["item"]]??"").trim(),
           description:(r[idx["description"]]??"").trim(),
@@ -277,11 +280,26 @@
           is_btc:toBool(r[idx["is_btc"]])
         }));
 
-      const set=new Set(RAW.map(r=>r.merchant).filter(Boolean));
-      MERCHANTS = Array.from(set);
-
+      // Build merchant list ordered by smallest sort, then firstIndex, then name
+      const metaMap = new Map(); // slug -> {name,minSort,firstIndex}
       HAS_BTC = {};
-      for(const r of RAW){ if(r.is_btc && r.merchant){ HAS_BTC[slugify(r.merchant)] = true; } }
+      for(const r of RAW){
+        const name=(r.merchant||"").trim(); if(!name) continue;
+        const slug=slugify(name);
+        const m=metaMap.get(slug) || {name, minSort:Infinity, firstIndex:r.__i};
+        const s = Number.isFinite(r.sort) ? r.sort : Infinity;
+        if(s < m.minSort) m.minSort = s;
+        if(r.__i < m.firstIndex) m.firstIndex = r.__i;
+        metaMap.set(slug,m);
+        if(r.is_btc) HAS_BTC[slug] = true;
+      }
+      MERCHANT_LIST = Array.from(metaMap.entries()).map(([slug,m])=>({
+        slug, name:m.name, key:m.minSort, firstIndex:m.firstIndex
+      })).sort((a,b)=>{
+        if(a.key!==b.key) return a.key-b.key;
+        if(a.firstIndex!==b.firstIndex) return a.firstIndex-b.firstIndex;
+        return a.name.localeCompare(b.name);
+      });
 
       initUI();
       render();
@@ -304,7 +322,10 @@
     const setShownState=o=>localStorage.setItem("btcShown",JSON.stringify(o||{}));
 
     const currentMerchant = ()=>els.merchant.value;
-    const merchantSlugToName = slug => MERCHANTS.find(m=>slugify(m)===slug) || slug;
+    const merchantSlugToName = slug => {
+      const m = MERCHANT_LIST.find(x=>x.slug===slug);
+      return m ? m.name : slug;
+    };
     const merchantHasBTC = slug => !!HAS_BTC[slug];
     const merchantUnlocked = slug => !!getPassState()[slug];
 
@@ -312,16 +333,14 @@
     // UI INIT
     // =========================
     function initUI(){
-      const fixed = FIXED_ORDER.filter(n=>MERCHANTS.includes(n));
-      const extras = MERCHANTS.filter(m=>!fixed.includes(m)).sort((a,b)=>a.localeCompare(b));
-      const order=[...fixed,...extras];
+      // Build dropdown from ordered merchant list
+      els.merchant.innerHTML = MERCHANT_LIST.map(m=>`<option value="${m.slug}">${m.name}</option>`).join("");
 
-      els.merchant.innerHTML = order.map(n=>`<option value="${slugify(n)}">${n}</option>`).join("");
-
+      // Restore from hash if present, else first merchant
       const hash=new URLSearchParams(location.hash.slice(1));
       const desired=hash.get("merchant");
-      const defaultSlug=slugify(order[0]||"");
-      els.merchant.value = desired && order.some(n=>slugify(n)===desired) ? desired : defaultSlug;
+      const exists = MERCHANT_LIST.some(m=>m.slug===desired);
+      els.merchant.value = exists ? desired : (MERCHANT_LIST[0]?.slug || "");
 
       applyBtcVisibility();
 
@@ -390,7 +409,7 @@
     function updateHash(){
       const p=new URLSearchParams();
       const slug=currentMerchant();
-      p.set("merchant",slug);
+      if(slug) p.set("merchant",slug);
       if(merchantHasBTC(slug) && merchantUnlocked(slug) && els.btc.checked){ p.set("btc","1"); }
       location.hash = p.toString();
     }
@@ -436,7 +455,6 @@
     function getSubtitle(slug, showBTC){
       const rows = RAW.filter(r => slugify(r.merchant)===slug);
       if(!rows.length) return "";
-      // sort by 'sort' asc (missing = Infinity), then by input order
       rows.sort((a,b)=>{
         const sa=Number.isFinite(a.sort)?a.sort:Infinity;
         const sb=Number.isFinite(b.sort)?b.sort:Infinity;
@@ -452,6 +470,33 @@
     }
 
     // =========================
+    // SKIN PICKER (from sheet, with fallback)
+    // =========================
+    function sanitizeSkin(val){
+      if(!val) return null;
+      const v = val.toLowerCase().trim();
+      return (v==="parchment" || v==="noticeboard") ? `skin-${v}` : null;
+    }
+    function getSkinClass(slug, showBTC){
+      const rows = RAW.filter(r => slugify(r.merchant)===slug);
+      if(!rows.length) return null;
+      rows.sort((a,b)=>{
+        const sa=Number.isFinite(a.sort)?a.sort:Infinity;
+        const sb=Number.isFinite(b.sort)?b.sort:Infinity;
+        if(sa!==sb) return sa-sb;
+        return a.__i - b.__i;
+      });
+      if(showBTC){
+        const rb = rows.find(r => r.skin_btc);
+        const sB = sanitizeSkin(rb?.skin_btc);
+        if(sB) return sB;
+      }
+      const r0 = rows.find(r => r.skin);
+      const s0 = sanitizeSkin(r0?.skin);
+      return s0 || null;
+    }
+
+    // =========================
     // RENDER
     // =========================
     function render(){
@@ -459,11 +504,15 @@
       const merchName=merchantSlugToName(merchSlug);
       const showBTC = merchantHasBTC(merchSlug) && merchantUnlocked(merchSlug) && els.btc.checked;
 
-      const skinClass=MERCHANT_SKIN[merchSlug]||"skin-parchment";
+      // Skin: prefer sheet value; else fallback map; else parchment
+      const fromSheet = getSkinClass(merchSlug, showBTC);
+      const fallback  = MERCHANT_SKIN[merchSlug] || "skin-parchment";
+      const skinClass = fromSheet || fallback;
       els.paper.className=`paper ${skinClass}`;
 
       const rows = RAW.filter(r => slugify(r.merchant)===merchSlug && (showBTC || !r.is_btc));
 
+      // group by section
       const sectionMap=new Map();
       for(const r of rows){
         const name=r.section||"";
@@ -473,6 +522,7 @@
         if(r.__i < s.firstIndex) s.firstIndex = r.__i;
       }
 
+      // order sections by smallest sort among items (missing=Infinity)
       const sections=[];
       for(const s of sectionMap.values()){
         s.items.sort((a,b)=>{
@@ -486,13 +536,10 @@
         s.key=Number.isFinite(firstWithSort?.sort)?firstWithSort.sort:Infinity;
         sections.push(s);
       }
-
       sections.sort((a,b)=>{
         if(a.key!==b.key) return a.key-b.key;
-        if(a.name && !b.name) return -1;
-        if(!a.name && b.name) return 1;
-        const idx=a.firstIndex-b.firstIndex; if(idx) return idx;
-        return a.name.localeCompare(b.name);
+        if(a.firstIndex!==b.firstIndex) return a.firstIndex-b.firstIndex;
+        return (a.name||"").localeCompare(b.name||"");
       });
 
       const subtitle = getSubtitle(merchSlug, showBTC);
